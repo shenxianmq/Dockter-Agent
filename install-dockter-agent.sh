@@ -144,9 +144,6 @@ services:
     container_name: dockter-agent
     restart: unless-stopped
 
-    ports:
-      - 19028:19028
-
     environment:
       - DOCKTER_MODE=agent
       - DOCKTER_STACK_DIR=/opt/docker-compose
@@ -162,14 +159,8 @@ services:
       - ./static/icons:/app/static/icons
       - $COMPOSE_ROOT:/opt/docker-compose
       - ./config:/app/config
-
-    networks:
-      - dockter-agent-network
-
-networks:
-  dockter-agent-network:
-    driver: bridge
-    name: dockter-agent-network
+    network_mode: host
+    
 EOF
 
 
