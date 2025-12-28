@@ -159,6 +159,9 @@ services:
       - ./static/icons:/app/static/icons
       - $COMPOSE_ROOT:/opt/docker-compose
       - ./config:/app/config
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+
     network_mode: host
     
 EOF
