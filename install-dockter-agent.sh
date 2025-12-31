@@ -9,30 +9,9 @@ echo "====================================="
 #####################################
 # 检测本机真实 IPv4
 #####################################
-detect_ipv4() {
-  ip route get 1.1.1.1 2>/dev/null \
-    | awk '/src/ {print $7; exit}' \
-    | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' && return
-
-  ip -4 addr show 2>/dev/null \
-    | grep -oP '(?<=inet\s)\d+(\.\d+){3}' \
-    | grep -v '^127\.' \
-    | grep -v '^172\.17\.' \
-    | grep -v '^172\.18\.' \
-    | grep -v '^172\.19\.' \
-    | head -n1 && return
-
-  hostname -I 2>/dev/null \
-    | tr ' ' '\n' \
-    | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' \
-    | grep -v '^127\.' \
-    | head -n1 && return
-
-  echo "127.0.0.1"
-}
 
 
-AUTO_IP=$(detect_ipv4)
+AUTO_IP=$(curl -s https://ipinfo.io/ip && echo)
 
 echo
 echo "检测到本机 IPv4 地址：$AUTO_IP"
