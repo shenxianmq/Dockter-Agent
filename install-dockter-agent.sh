@@ -31,7 +31,7 @@ case "$ip_choice" in
     ;;
 esac
 
-AGENT_ENDPOINT="http://$SERVER_IP:19028"
+AGENT_ENDPOINT="http://$SERVER_IP:19029"
 
 
 #####################################
@@ -152,11 +152,11 @@ EOF
 echo
 echo "⚠️ 重要提示"
 echo "如果您的服务器开启了防火墙或云厂商安全组："
-echo "👉 请务必放行端口 19028/TCP"
+echo "👉 请务必放行端口 19029/TCP"
 echo
 echo "例如："
-echo "  ufw allow 19028/tcp"
-echo "  firewall-cmd --add-port=19028/tcp --permanent && firewall-cmd --reload"
+echo "  ufw allow 19029/tcp"
+echo "  firewall-cmd --add-port=19029/tcp --permanent && firewall-cmd --reload"
 echo
 echo "否则外部将无法访问 Agent"
 echo
@@ -200,7 +200,7 @@ echo "====================================="
 echo " Dockter Agent 信息"
 echo "====================================="
 echo "👉 Agent 访问地址:"
-echo "   http://$SERVER_IP:19028"
+echo "   http://$SERVER_IP:19029"
 echo
 echo "🔑 API Token:"
 echo "   $DOCKTER_API_TOKEN"
@@ -208,5 +208,5 @@ echo
 echo "📁 Compose 根目录:"
 echo "   $COMPOSE_ROOT"
 echo
-echo "⚠️ 请确认 19028 端口已放行！"
+echo "⚠️ 请确认 19029 端口已放行！"
 echo "====================================="
