@@ -125,6 +125,7 @@ services:
 
     environment:
       - DOCKTER_MODE=agent
+      - HOST_STACK_DIR=$COMPOSE_ROOT
       - DOCKTER_STACK_DIR=/opt/docker-compose
       - DOCKTER_API_TOKEN=$DOCKTER_API_TOKEN
       - DOCKTER_COMPOSE_PULL_IMAGES=$DOCKTER_COMPOSE_PULL_IMAGES
