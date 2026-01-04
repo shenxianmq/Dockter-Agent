@@ -31,11 +31,23 @@ case "$ip_choice" in
     ;;
 esac
 
+
+#####################################
+# API 端口设置
+#####################################
+DEFAULT_API_PORT="19029"
+
+echo
+echo "设置 DOCKTER_API_PORT："
+read -p "按回车使用默认 [$DEFAULT_API_PORT]，或输入端口号: " USER_API_PORT
+USER_API_PORT=${USER_API_PORT:-$DEFAULT_API_PORT}
+DOCKTER_API_PORT="$USER_API_PORT"
+
 # 检查 SERVER_IP 是否已包含协议，如果没有则添加 http://
 if [[ "$SERVER_IP" =~ ^https?:// ]]; then
-  AGENT_ENDPOINT="$SERVER_IP:19029"
+  AGENT_ENDPOINT="$SERVER_IP:$DOCKTER_API_PORT"
 else
-  AGENT_ENDPOINT="http://$SERVER_IP:19029"
+  AGENT_ENDPOINT="http://$SERVER_IP:$DOCKTER_API_PORT"
 fi
 
 
@@ -145,7 +157,7 @@ services:
       - DOCKTER_COMPOSE_PULL_IMAGES=$DOCKTER_COMPOSE_PULL_IMAGES
       - DOCKTER_CONTAINER_BASE_URL=$DOCKTER_CONTAINER_BASE_URL
       - DOCKTER_SELF_CONTAINER=dockter-agent
-      - DOCKTER_API_PORT=19029
+      - DOCKTER_API_PORT=$DOCKTER_API_PORT
       - TZ=Asia/Shanghai
       - LOG_LEVEL=debug
 
@@ -168,11 +180,11 @@ EOF
 echo
 echo "⚠️ 重要提示"
 echo "如果您的服务器开启了防火墙或云厂商安全组："
-echo "👉 请务必放行端口 19029/TCP"
+echo "👉 请务必放行端口 $DOCKTER_API_PORT/TCP"
 echo
 echo "例如："
-echo "  ufw allow 19029/tcp"
-echo "  firewall-cmd --add-port=19029/tcp --permanent && firewall-cmd --reload"
+echo "  ufw allow $DOCKTER_API_PORT/tcp"
+echo "  firewall-cmd --add-port=$DOCKTER_API_PORT/tcp --permanent && firewall-cmd --reload"
 echo
 echo "否则外部将无法访问 Agent"
 echo
@@ -218,9 +230,9 @@ echo "====================================="
 echo "👉 Agent 访问地址:"
 # 检查 SERVER_IP 是否已包含协议，如果没有则添加 http://
 if [[ "$SERVER_IP" =~ ^https?:// ]]; then
-  echo "   $SERVER_IP:19029"
+  echo "   $SERVER_IP:$DOCKTER_API_PORT"
 else
-  echo "   http://$SERVER_IP:19029"
+  echo "   http://$SERVER_IP:$DOCKTER_API_PORT"
 fi
 echo
 echo "🔑 API Token:"
@@ -229,5 +241,5 @@ echo
 echo "📁 Compose 根目录:"
 echo "   $COMPOSE_ROOT"
 echo
-echo "⚠️ 请确认 19029 端口已放行！"
+echo "⚠️ 请确认 $DOCKTER_API_PORT 端口已放行！"
 echo "====================================="
