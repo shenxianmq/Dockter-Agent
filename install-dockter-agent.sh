@@ -31,7 +31,12 @@ case "$ip_choice" in
     ;;
 esac
 
-AGENT_ENDPOINT="http://$SERVER_IP:19029"
+# 检查 SERVER_IP 是否已包含协议，如果没有则添加 http://
+if [[ "$SERVER_IP" =~ ^https?:// ]]; then
+  AGENT_ENDPOINT="$SERVER_IP:19029"
+else
+  AGENT_ENDPOINT="http://$SERVER_IP:19029"
+fi
 
 
 #####################################
@@ -78,7 +83,12 @@ esac
 #####################################
 # Base URL（不带端口）
 #####################################
-DEFAULT_BASE_URL="http://$SERVER_IP"
+# 检查 SERVER_IP 是否已包含协议，如果没有则添加 http://
+if [[ "$SERVER_IP" =~ ^https?:// ]]; then
+  DEFAULT_BASE_URL="$SERVER_IP"
+else
+  DEFAULT_BASE_URL="http://$SERVER_IP"
+fi
 
 echo
 echo "设置 DOCKTER_CONTAINER_BASE_URL："
@@ -90,6 +100,10 @@ base_choice=${base_choice:-1}
 case "$base_choice" in
   2)
     read -p "请输入 URL（不要带端口）: " DOCKTER_CONTAINER_BASE_URL
+    # 检查是否已经包含 http:// 或 https://，如果没有则添加 http://
+    if [[ ! "$DOCKTER_CONTAINER_BASE_URL" =~ ^https?:// ]]; then
+      DOCKTER_CONTAINER_BASE_URL="http://$DOCKTER_CONTAINER_BASE_URL"
+    fi
     ;;
   *)
     DOCKTER_CONTAINER_BASE_URL="$DEFAULT_BASE_URL"
@@ -202,7 +216,12 @@ echo "====================================="
 echo " Dockter Agent 信息"
 echo "====================================="
 echo "👉 Agent 访问地址:"
-echo "   http://$SERVER_IP:19029"
+# 检查 SERVER_IP 是否已包含协议，如果没有则添加 http://
+if [[ "$SERVER_IP" =~ ^https?:// ]]; then
+  echo "   $SERVER_IP:19029"
+else
+  echo "   http://$SERVER_IP:19029"
+fi
 echo
 echo "🔑 API Token:"
 echo "   $DOCKTER_API_TOKEN"
