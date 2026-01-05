@@ -74,6 +74,144 @@ detect_arch() {
     print_info "检测到架构: $ARCH"
 }
 
+# 获取当前安装的版本
+get_current_version() {
+    local binary_path="$INSTALL_DIR/dockter-agent"
+    if [ -f "$binary_path" ] && [ -x "$binary_path" ]; then
+        # 尝试从二进制文件获取版本（如果支持 --version 参数）
+        local version=$("$binary_path" --version 2>/dev/null || echo "")
+        if [ -n "$version" ]; then
+            echo "$version"
+            return 0
+        fi
+        
+        # 尝试从 systemd 服务状态获取版本信息
+        if systemctl is-active --quiet dockter-agent 2>/dev/null; then
+            # 服务正在运行，尝试通过 API 获取版本
+            local api_port=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_DIR/config.json" 2>/dev/null | grep -o '[0-9]*' | head -1)
+            api_port=${api_port:-8080}
+            local version=$(curl -s "http://localhost:$api_port/api/v1/system/version" 2>/dev/null | grep -o '"v[^"]*"' | head -1 | tr -d '"' || echo "")
+            if [ -n "$version" ]; then
+                echo "$version"
+                return 0
+            fi
+        fi
+    fi
+    echo ""
+    return 1
+}
+
+# 获取远程最新版本
+get_latest_version() {
+    local version_url="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/version.txt"
+    
+    if command -v curl >/dev/null 2>&1; then
+        local version_info=$(curl -s "$version_url" 2>/dev/null || echo "")
+        if [ -n "$version_info" ]; then
+            local version=$(echo "$version_info" | grep -i "^Version:" | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
+            if [ -n "$version" ]; then
+                echo "$version"
+                return 0
+            fi
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        local version_info=$(wget -q -O- "$version_url" 2>/dev/null || echo "")
+        if [ -n "$version_info" ]; then
+            local version=$(echo "$version_info" | grep -i "^Version:" | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
+            if [ -n "$version" ]; then
+                echo "$version"
+                return 0
+            fi
+        fi
+    fi
+    
+    echo ""
+    return 1
+}
+
+# 比较版本号
+compare_versions() {
+    local version1="$1"
+    local version2="$2"
+    
+    # 移除 'v' 前缀
+    version1=$(echo "$version1" | sed 's/^v//')
+    version2=$(echo "$version2" | sed 's/^v//')
+    
+    # 使用 sort -V 进行版本比较
+    if [ "$(printf '%s\n' "$version1" "$version2" | sort -V | head -n1)" = "$version1" ]; then
+        if [ "$version1" = "$version2" ]; then
+            echo "equal"
+        else
+            echo "older"
+        fi
+    else
+        echo "newer"
+    fi
+}
+
+# 检查版本信息
+check_version() {
+    print_info "检查版本信息..."
+    
+    local current_version=""
+    local latest_version=""
+    
+    # 获取当前版本（如果已安装）
+    if [ -f "$INSTALL_DIR/dockter-agent" ]; then
+        current_version=$(get_current_version)
+        if [ -n "$current_version" ]; then
+            print_info "当前安装版本: $current_version"
+        else
+            print_warning "无法获取当前版本信息"
+        fi
+    else
+        print_info "未检测到已安装的版本"
+    fi
+    
+    # 获取最新版本
+    print_info "正在获取最新版本信息..."
+    latest_version=$(get_latest_version)
+    
+    if [ -n "$latest_version" ]; then
+        print_success "最新可用版本: $latest_version"
+        
+        # 如果有当前版本，进行比较
+        if [ -n "$current_version" ]; then
+            local comparison=$(compare_versions "$current_version" "$latest_version")
+            case "$comparison" in
+                "equal")
+                    print_success "当前版本已是最新版本"
+                    ;;
+                "older")
+                    print_warning "发现新版本: $latest_version（当前: $current_version）"
+                    echo
+                    read -p "是否继续安装/更新到最新版本？(Y/n): " update_choice
+                    update_choice=${update_choice:-Y}
+                    if [[ ! "$update_choice" =~ ^[Yy]$ ]]; then
+                        print_info "已取消安装"
+                        exit 0
+                    fi
+                    ;;
+                "newer")
+                    print_warning "当前版本 ($current_version) 比远程版本 ($latest_version) 更新"
+                    echo
+                    read -p "是否继续安装？(y/N): " continue_choice
+                    continue_choice=${continue_choice:-N}
+                    if [[ ! "$continue_choice" =~ ^[Yy]$ ]]; then
+                        print_info "已取消安装"
+                        exit 0
+                    fi
+                    ;;
+            esac
+        fi
+    else
+        print_warning "无法获取最新版本信息，将使用默认下载源"
+    fi
+    
+    echo
+}
+
 # 检测本机真实 IPv4
 detect_ip() {
     AUTO_IP=$(curl -s https://ipinfo.io/ip 2>/dev/null || echo "")
@@ -992,7 +1130,12 @@ main() {
     
     # 创建安装目录（下载二进制文件需要）
     INSTALL_DIR="/opt/dockter-agent"
+    CONFIG_DIR="$INSTALL_DIR/config"
     mkdir -p "$INSTALL_DIR"
+    mkdir -p "$CONFIG_DIR"
+    
+    # 检查版本信息（在下载之前）
+    check_version
     
     # 在配置之前先下载二进制文件
     print_info "开始下载二进制文件..."
