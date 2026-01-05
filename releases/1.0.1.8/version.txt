@@ -1,0 +1,4 @@
+Version: 1.0.1.8
+Build Date: 2026-01-05 09:53:04 UTC
+Commit: b8d530916ff3d98c1e4861c9ff7327e7acdcac34
+Repository: shenxianmq/Dockter-Backend
