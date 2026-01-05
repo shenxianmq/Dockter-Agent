@@ -828,25 +828,50 @@ disable_autostart() {
     print_success "自启动已禁用"
 }
 
-# 显示访问地址
-show_address() {
-    if [ ! -f "$CONFIG_FILE" ]; then
-        print_error "配置文件不存在: $CONFIG_FILE"
-        exit 1
-    fi
+# 显示访问信息（地址、Token、端口）
+show_access_info() {
+    echo
     
     # 读取端口
-    PORT=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" 2>/dev/null | grep -o '[0-9]*' | head -1)
+    PORT=""
+    if [ -f "$INSTALL_DIR/.env" ]; then
+        PORT=$(grep "^DOCKTER_API_PORT=" "$INSTALL_DIR/.env" | cut -d'=' -f2)
+    fi
+    if [ -z "$PORT" ] && [ -f "$CONFIG_FILE" ]; then
+        PORT=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_FILE" 2>/dev/null | grep -o '[0-9]*' | head -1)
+    fi
     if [ -z "$PORT" ]; then
         PORT="8080"  # 默认端口
+    fi
+    
+    # 读取 Token
+    TOKEN=""
+    if [ -f "$CONFIG_FILE" ]; then
+        TOKEN=$(grep -o '"api_token"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | cut -d'"' -f4)
     fi
     
     # 尝试获取服务器 IP
     SERVER_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
     
+    # 显示访问地址
     print_info "Agent 访问地址:"
     echo "  http://$SERVER_IP:$PORT"
     echo
+    
+    # 显示端口
+    print_info "API 端口:"
+    echo "  $PORT"
+    echo
+    
+    # 显示 Token
+    if [ -n "$TOKEN" ]; then
+        print_info "API Token:"
+        echo "  $TOKEN"
+    else
+        print_warning "未找到 Token 配置"
+    fi
+    echo
+    
     print_info "如果使用域名，请替换 IP 地址为您的域名"
 }
 
@@ -862,16 +887,14 @@ show_menu() {
         echo "2) 启动服务"
         echo "3) 停止服务"
         echo "4) 重启服务"
-        echo "5) 查看访问地址"
-        echo "6) 查看 API Token"
-        echo "7) 查看端口"
-        echo "8) 更新服务"
-        echo "9) 启用自启动"
-        echo "10) 禁用自启动"
-        echo "11) 卸载服务"
+        echo "5) 查看访问信息（地址/Token/端口）"
+        echo "6) 更新服务"
+        echo "7) 启用自启动"
+        echo "8) 禁用自启动"
+        echo "9) 卸载服务"
         echo "0) 退出"
         echo
-        read -p "请选择操作 [0-11]: " choice
+        read -p "请选择操作 [0-9]: " choice
         
         case "$choice" in
             1)
@@ -900,41 +923,29 @@ show_menu() {
                 ;;
             5)
                 echo
-                show_address
+                show_access_info
                 echo
                 read -p "按 Enter 键继续..."
                 ;;
             6)
                 echo
-                show_token
+                update_service
                 echo
                 read -p "按 Enter 键继续..."
                 ;;
             7)
                 echo
-                show_port
+                enable_autostart
                 echo
                 read -p "按 Enter 键继续..."
                 ;;
             8)
                 echo
-                update_service
-                echo
-                read -p "按 Enter 键继续..."
-                ;;
-            9)
-                echo
-                enable_autostart
-                echo
-                read -p "按 Enter 键继续..."
-                ;;
-            10)
-                echo
                 disable_autostart
                 echo
                 read -p "按 Enter 键继续..."
                 ;;
-            11)
+            9)
                 echo
                 uninstall_service
                 echo
@@ -966,6 +977,7 @@ Dockter Agent 管理工具
   start           启动服务
   stop            停止服务
   restart         重启服务
+  info            显示访问信息（地址/Token/端口）
   port            显示 API 端口
   token           显示 API Token
   address         显示访问地址
@@ -980,6 +992,7 @@ Dockter Agent 管理工具
   dt               # 显示交互式菜单
   dt status        # 查看服务状态
   dt start         # 启动服务
+  dt info          # 查看访问信息（地址/Token/端口）
   dt address       # 查看访问地址
   dt token         # 查看 Token
   dt update        # 更新服务
@@ -999,6 +1012,9 @@ case "$1" in
         ;;
     restart)
         restart_service
+        ;;
+    info)
+        show_access_info
         ;;
     port)
         show_port
