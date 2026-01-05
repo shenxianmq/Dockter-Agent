@@ -918,8 +918,7 @@ show_menu() {
                 ;;
             8)
                 echo
-                read -p "请输入下载 URL（留空使用默认）: " update_url
-                update_service "$update_url"
+                update_service
                 echo
                 read -p "按 Enter 键继续..."
                 ;;
