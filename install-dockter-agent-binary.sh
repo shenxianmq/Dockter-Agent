@@ -90,7 +90,7 @@ get_current_version() {
             # 服务正在运行，尝试通过 API 获取版本
             local api_port=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_DIR/config.json" 2>/dev/null | grep -o '[0-9]*' | head -1)
             api_port=${api_port:-8080}
-            local version=$(curl -s "http://localhost:$api_port/api/v1/system/version" 2>/dev/null | grep -o '"v[^"]*"' | head -1 | tr -d '"' || echo "")
+            local version=$(curl -s --max-time 2 --connect-timeout 2 "http://localhost:$api_port/api/v1/system/version" 2>/dev/null | grep -o '"v[^"]*"' | head -1 | tr -d '"' || echo "")
             if [ -n "$version" ]; then
                 echo "$version"
                 return 0
@@ -106,7 +106,7 @@ get_latest_version() {
     local version_url="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/version.txt"
     
     if command -v curl >/dev/null 2>&1; then
-        local version_info=$(curl -s "$version_url" 2>/dev/null || echo "")
+        local version_info=$(curl -s --max-time 5 --connect-timeout 3 "$version_url" 2>/dev/null || echo "")
         if [ -n "$version_info" ]; then
             local version=$(echo "$version_info" | grep -i "^Version:" | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
             if [ -n "$version" ]; then
@@ -214,7 +214,7 @@ check_version() {
 
 # 检测本机真实 IPv4
 detect_ip() {
-    AUTO_IP=$(curl -s https://ipinfo.io/ip 2>/dev/null || echo "")
+    AUTO_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || echo "")
     
     if [ -z "$AUTO_IP" ]; then
         AUTO_IP=$(hostname -I | awk '{print $1}')
@@ -840,7 +840,7 @@ show_address() {
     fi
     
     # 尝试获取服务器 IP
-    SERVER_IP=$(curl -s https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
+    SERVER_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
     
     print_info "Agent 访问地址:"
     echo "  http://$SERVER_IP:$PORT"
