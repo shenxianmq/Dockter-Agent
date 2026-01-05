@@ -76,25 +76,13 @@ detect_arch() {
 
 # 获取当前安装的版本
 get_current_version() {
-    local binary_path="$INSTALL_DIR/dockter-agent"
-    if [ -f "$binary_path" ] && [ -x "$binary_path" ]; then
-        # 尝试从二进制文件获取版本（如果支持 --version 参数）
-        local version=$("$binary_path" --version 2>/dev/null || echo "")
+    # 从本地 version.txt 文件读取版本
+    local version_file="$INSTALL_DIR/version.txt"
+    if [ -f "$version_file" ]; then
+        local version=$(grep -i "^Version:" "$version_file" 2>/dev/null | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
         if [ -n "$version" ]; then
             echo "$version"
             return 0
-        fi
-        
-        # 尝试从 systemd 服务状态获取版本信息
-        if systemctl is-active --quiet dockter-agent 2>/dev/null; then
-            # 服务正在运行，尝试通过 API 获取版本
-            local api_port=$(grep -o '"api_port"[[:space:]]*:[[:space:]]*[0-9]*' "$CONFIG_DIR/config.json" 2>/dev/null | grep -o '[0-9]*' | head -1)
-            api_port=${api_port:-8080}
-            local version=$(curl -s --max-time 2 --connect-timeout 2 "http://localhost:$api_port/api/v1/system/version" 2>/dev/null | grep -o '"v[^"]*"' | head -1 | tr -d '"' || echo "")
-            if [ -n "$version" ]; then
-                echo "$version"
-                return 0
-            fi
         fi
     fi
     echo ""
@@ -115,7 +103,7 @@ get_latest_version() {
             fi
         fi
     elif command -v wget >/dev/null 2>&1; then
-        local version_info=$(wget -q -O- "$version_url" 2>/dev/null || echo "")
+        local version_info=$(wget -q --timeout=5 --tries=1 -O- "$version_url" 2>/dev/null || echo "")
         if [ -n "$version_info" ]; then
             local version=$(echo "$version_info" | grep -i "^Version:" | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
             if [ -n "$version" ]; then
@@ -157,13 +145,13 @@ check_version() {
     local current_version=""
     local latest_version=""
     
-    # 获取当前版本（如果已安装）
-    if [ -f "$INSTALL_DIR/dockter-agent" ]; then
+    # 获取当前版本（从本地 version.txt）
+    if [ -f "$INSTALL_DIR/version.txt" ]; then
         current_version=$(get_current_version)
         if [ -n "$current_version" ]; then
             print_info "当前安装版本: $current_version"
         else
-            print_warning "无法获取当前版本信息"
+            print_warning "无法从 version.txt 读取当前版本信息"
         fi
     else
         print_info "未检测到已安装的版本"
@@ -430,6 +418,9 @@ download_binary() {
         print_info "使用 wget 下载..."
         if wget -q --show-progress "$github_url" -O "$INSTALL_DIR/dockter-agent"; then
             chmod +x "$INSTALL_DIR/dockter-agent"
+            # 同时下载 version.txt
+            local version_url="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/version.txt"
+            wget -q "$version_url" -O "$INSTALL_DIR/version.txt" 2>/dev/null || print_warning "无法下载 version.txt，但不影响安装"
             print_success "二进制文件下载完成"
             return 0
         else
@@ -441,6 +432,9 @@ download_binary() {
         print_info "使用 curl 下载..."
         if curl -L --progress-bar "$github_url" -o "$INSTALL_DIR/dockter-agent"; then
             chmod +x "$INSTALL_DIR/dockter-agent"
+            # 同时下载 version.txt
+            local version_url="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/version.txt"
+            curl -s --max-time 5 --connect-timeout 3 "$version_url" -o "$INSTALL_DIR/version.txt" 2>/dev/null || print_warning "无法下载 version.txt，但不影响安装"
             print_success "二进制文件下载完成"
             return 0
         else
