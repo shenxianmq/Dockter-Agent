@@ -229,6 +229,29 @@ download_binary() {
     print_info "架构: $ARCH"
     print_info "文件: $binary_name"
     
+    # 检查安装目录是否已存在二进制文件
+    if [ -f "$INSTALL_DIR/dockter-agent" ]; then
+        print_warning "检测到安装目录已存在二进制文件: $INSTALL_DIR/dockter-agent"
+        echo
+        echo "是否要覆盖现有文件？"
+        echo "1) 是，覆盖现有文件（默认）"
+        echo "2) 否，跳过下载，使用现有文件"
+        read -p "请选择 (1/2 默认1): " overwrite_choice
+        overwrite_choice=${overwrite_choice:-1}
+        
+        case "$overwrite_choice" in
+            2)
+                print_info "跳过下载，使用现有二进制文件"
+                chmod +x "$INSTALL_DIR/dockter-agent"
+                print_success "使用现有二进制文件"
+                return 0
+                ;;
+            *)
+                print_info "将覆盖现有二进制文件"
+                ;;
+        esac
+    fi
+    
     # 优先使用用户指定的 URL
     if [ -n "$BINARY_URL" ]; then
         print_info "从用户指定的 URL 下载: $BINARY_URL"
@@ -254,6 +277,7 @@ download_binary() {
     # 检查本地文件
     if [ -f "./$binary_name" ]; then
         print_info "使用本地二进制文件: ./$binary_name"
+        # 如果目标文件已存在，之前的检查已经询问过用户，这里直接覆盖
         cp "./$binary_name" "$INSTALL_DIR/dockter-agent"
         chmod +x "$INSTALL_DIR/dockter-agent"
         print_success "二进制文件复制完成"
