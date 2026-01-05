@@ -242,6 +242,7 @@ SERVICE_FILE="/etc/systemd/system/dockter-agent.service"
 # 配置变量
 DEFAULT_API_PORT="19029"
 DEFAULT_COMPOSE_ROOT="/mnt/compose"
+DEFAULT_FILE_MANAGER_DIR="/"
 DEFAULT_HOST="0.0.0.0"
 DEFAULT_TZ="Asia/Shanghai"
 
@@ -334,6 +335,13 @@ interactive_config() {
         2) DOCKTER_DEBUG="true" ;;
         *) DOCKTER_DEBUG="false" ;;
     esac
+    
+    # 文件管理默认目录
+    echo
+    echo "设置文件管理默认目录："
+    read -p "按回车使用默认 [$DEFAULT_FILE_MANAGER_DIR]，或输入路径: " USER_FILE_MANAGER_DIR
+    USER_FILE_MANAGER_DIR=${USER_FILE_MANAGER_DIR:-$DEFAULT_FILE_MANAGER_DIR}
+    FILE_MANAGER_DEFAULT_DIR=$(realpath -m "$USER_FILE_MANAGER_DIR" 2>/dev/null || echo "$USER_FILE_MANAGER_DIR")
 }
 
 # 创建目录结构
@@ -469,7 +477,7 @@ create_config() {
     "host_stack_dir": "$COMPOSE_ROOT"
   },
   "file_manager_settings": {
-    "default_dir": "$COMPOSE_ROOT"
+    "default_dir": "$FILE_MANAGER_DEFAULT_DIR"
   },
   "dashboard": {},
   "docker_bot_settings": {},
