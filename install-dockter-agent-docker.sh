@@ -207,10 +207,15 @@ confirm=${confirm:-Y}
 if [[ "$confirm" =~ ^[Yy]$ ]]; then
   cd "$AGENT_DIR"
 
-  if command -v docker compose &>/dev/null; then
+  # 检测 Docker Compose 命令
+  if docker compose version &>/dev/null; then
     docker compose up -d
-  else
+  elif command -v docker-compose &>/dev/null; then
     docker-compose up -d
+  else
+    echo "❌ 错误：未找到 docker compose 或 docker-compose 命令"
+    echo "请先安装 Docker Compose"
+    exit 1
   fi
 
   echo
