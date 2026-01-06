@@ -560,6 +560,201 @@ EOF
     print_success "systemd 服务文件创建完成"
 }
 
+# 创建 Agent 更新脚本
+create_update_script() {
+    print_info "创建 Agent 更新脚本..."
+    
+    cat > "$INSTALL_DIR/update-agent.sh" <<'UPDATEEOF'
+#!/usr/bin/env bash
+# Dockter Agent 自动更新脚本
+# 此脚本由 dockter-agent-updater.service 调用
+
+set -e
+
+INSTALL_DIR="/opt/dockter-agent"
+SERVICE_NAME="dockter-agent"
+LOG_FILE="$INSTALL_DIR/logs/update.log"
+LOCK_FILE="/tmp/dockter-agent-update.lock"
+
+# 确保日志目录存在
+mkdir -p "$INSTALL_DIR/logs"
+
+# 清空日志文件（每次更新都从新开始）
+> "$LOG_FILE"
+
+# 日志函数
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $1" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $1" | tee -a "$LOG_FILE"
+}
+
+log_warning() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1" | tee -a "$LOG_FILE"
+}
+
+# 检查锁文件，防止并发更新
+if [ -f "$LOCK_FILE" ]; then
+    PID=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        log_warning "更新进程正在运行中 (PID: $PID)，跳过本次更新"
+        exit 0
+    else
+        log_warning "发现过期的锁文件，清理后继续"
+        rm -f "$LOCK_FILE"
+    fi
+fi
+
+# 创建锁文件
+echo $$ > "$LOCK_FILE"
+trap "rm -f $LOCK_FILE" EXIT
+
+log_info "========================================="
+log_info "开始执行 Agent 自动更新"
+log_info "========================================="
+
+# 检测架构
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)
+        ARCH="amd64"
+        ;;
+    aarch64|arm64)
+        ARCH="arm64"
+        ;;
+    *)
+        log_error "不支持的架构: $ARCH"
+        exit 1
+        ;;
+esac
+
+log_info "检测到架构: $ARCH"
+
+# 构建下载 URL
+BINARY_NAME="dockter-agent_linux_$ARCH"
+GITHUB_URL="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/$BINARY_NAME"
+DOWNLOAD_URL="${1:-$GITHUB_URL}"
+
+log_info "下载 URL: $DOWNLOAD_URL"
+
+# 停止服务
+if systemctl is-active --quiet "$SERVICE_NAME"; then
+    log_info "停止服务..."
+    systemctl stop "$SERVICE_NAME" || {
+        log_error "停止服务失败"
+        exit 1
+    }
+    sleep 2
+    log_info "服务已停止"
+else
+    log_info "服务未运行，跳过停止步骤"
+fi
+
+# 下载新版本
+log_info "开始下载新版本..."
+TEMP_FILE="$INSTALL_DIR/dockter-agent.new"
+
+if command -v wget >/dev/null 2>&1; then
+    if wget -q --show-progress "$DOWNLOAD_URL" -O "$TEMP_FILE"; then
+        chmod +x "$TEMP_FILE"
+        log_info "下载完成 (使用 wget)"
+    else
+        log_error "下载失败 (wget)"
+        exit 1
+    fi
+elif command -v curl >/dev/null 2>&1; then
+    if curl -L --progress-bar "$DOWNLOAD_URL" -o "$TEMP_FILE"; then
+        chmod +x "$TEMP_FILE"
+        log_info "下载完成 (使用 curl)"
+    else
+        log_error "下载失败 (curl)"
+        exit 1
+    fi
+else
+    log_error "未找到 wget 或 curl，无法下载"
+    exit 1
+fi
+
+# 验证新版本
+if [ ! -f "$TEMP_FILE" ] || [ ! -x "$TEMP_FILE" ]; then
+    log_error "下载的文件无效"
+    rm -f "$TEMP_FILE"
+    exit 1
+fi
+
+# 替换旧版本
+mv "$TEMP_FILE" "$INSTALL_DIR/dockter-agent"
+log_info "新版本已安装"
+
+# 同时下载 version.txt（如果可用）
+VERSION_URL="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/version.txt"
+if command -v wget >/dev/null 2>&1; then
+    wget -q "$VERSION_URL" -O "$INSTALL_DIR/version.txt" 2>/dev/null || log_warning "无法下载 version.txt"
+elif command -v curl >/dev/null 2>&1; then
+    curl -s --max-time 5 --connect-timeout 3 "$VERSION_URL" -o "$INSTALL_DIR/version.txt" 2>/dev/null || log_warning "无法下载 version.txt"
+fi
+
+# 启动服务
+log_info "启动服务..."
+if systemctl start "$SERVICE_NAME"; then
+    sleep 2
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log_info "服务启动成功"
+        log_info "========================================="
+        log_info "Agent 更新完成"
+        log_info "========================================="
+    else
+        log_error "服务启动失败"
+        systemctl status "$SERVICE_NAME" --no-pager -l | tail -n 20 >> "$LOG_FILE" 2>&1
+        exit 1
+    fi
+else
+    log_error "启动服务命令失败"
+    exit 1
+fi
+UPDATEEOF
+
+    chmod +x "$INSTALL_DIR/update-agent.sh"
+    print_success "Agent 更新脚本创建完成"
+}
+
+# 创建 Agent 更新器 systemd 服务
+create_updater_service() {
+    print_info "创建 Agent 更新器服务..."
+    
+    UPDATER_SERVICE_FILE="/etc/systemd/system/dockter-agent-updater.service"
+    
+    cat > "$UPDATER_SERVICE_FILE" <<EOF
+[Unit]
+Description=Dockter Agent Auto Updater Service
+After=network.target
+Documentation=man:systemd.service(5)
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$INSTALL_DIR/update-agent.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dockter-agent-updater
+
+# 安全设置
+NoNewPrivileges=true
+PrivateTmp=true
+
+# 资源限制
+TimeoutStartSec=300
+TimeoutStopSec=30
+EOF
+    
+    systemctl daemon-reload
+    print_success "Agent 更新器服务创建完成"
+    print_info "使用方法: systemctl start dockter-agent-updater"
+}
+
 # 创建 dt 命令工具
 create_dt_command() {
     print_info "创建 dt 命令工具..."
@@ -687,105 +882,266 @@ restart_service() {
 update_service() {
     print_info "更新服务..."
     
-    # 检测架构
-    ARCH=$(uname -m)
-    case $ARCH in
-        x86_64)
-            ARCH="amd64"
-            ;;
-        aarch64|arm64)
-            ARCH="arm64"
-            ;;
-        *)
-            print_error "不支持的架构: $ARCH"
-            exit 1
-            ;;
-    esac
-    
-    local binary_name="dockter-agent_linux_$ARCH"
-    local github_url="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/$binary_name"
-    
-    # 停止服务
-    if systemctl is-active --quiet "$SERVICE_NAME"; then
-        print_info "停止服务..."
-        systemctl stop "$SERVICE_NAME"
-        sleep 1
-    fi
-    
-    # 备份当前二进制
-    if [ -f "$INSTALL_DIR/dockter-agent" ]; then
-        BACKUP_FILE="$INSTALL_DIR/dockter-agent.backup.$(date +%Y%m%d_%H%M%S)"
-        cp "$INSTALL_DIR/dockter-agent" "$BACKUP_FILE"
-        print_info "已备份当前版本到: $BACKUP_FILE"
-    fi
-    
-    # 下载新版本
+    # 如果指定了参数（如 "sidebar"），使用更新器服务更新
+    # dt update sidebar - 使用更新器服务更新（用于 agent 自更新）
     if [ -n "$1" ]; then
-        # 使用用户指定的 URL
-        print_info "从指定 URL 下载新版本: $1"
-        download_url="$1"
-    else
-        # 自动从 GitHub latest 下载
-        print_info "从 GitHub 自动下载最新版本..."
-        print_info "架构: $ARCH"
-        print_info "URL: $github_url"
-        download_url="$github_url"
-    fi
-    
-    # 下载文件
-    if command -v wget &> /dev/null; then
-        print_info "使用 wget 下载..."
-        if wget -q --show-progress "$download_url" -O "$INSTALL_DIR/dockter-agent.new"; then
-            chmod +x "$INSTALL_DIR/dockter-agent.new"
-            mv "$INSTALL_DIR/dockter-agent.new" "$INSTALL_DIR/dockter-agent"
-            print_success "下载完成"
-        else
-            print_error "下载失败"
-            # 恢复备份（如果存在）
-            if [ -f "$BACKUP_FILE" ]; then
-                print_info "恢复备份版本..."
-                cp "$BACKUP_FILE" "$INSTALL_DIR/dockter-agent"
-                start_service
+        # 检查更新器服务是否存在
+        if [ -f "/etc/systemd/system/dockter-agent-updater.service" ]; then
+            print_info "使用更新器服务进行更新（参数: $1）..."
+            
+            # 如果参数是 URL，传递给更新脚本
+            if [[ "$1" =~ ^https?:// ]]; then
+                print_info "从指定 URL 更新: $1"
+                if "$INSTALL_DIR/update-agent.sh" "$1"; then
+                    print_success "更新完成"
+                else
+                    print_error "更新失败，请查看日志: $INSTALL_DIR/logs/update.log"
+                    exit 1
+                fi
+            else
+                # 使用更新器服务（不带 URL 参数，使用默认 GitHub URL）
+                print_info "启动更新器服务..."
+                if systemctl start dockter-agent-updater.service; then
+                    print_success "更新任务已启动"
+                    echo
+                    print_info "实时更新日志:"
+                    echo "----------------------------------------"
+                    
+                    # 等待一小段时间让服务开始写入日志
+                    sleep 0.5
+                    
+                    # 实时显示日志
+                    LOG_FILE="$INSTALL_DIR/logs/update.log"
+                    if [ -f "$LOG_FILE" ]; then
+                        # 实时跟踪日志文件
+                        # 在后台监控服务状态，当服务完成时停止 tail
+                        (
+                            # 等待服务完成
+                            while systemctl is-active --quiet dockter-agent-updater.service 2>/dev/null; do
+                                sleep 0.2
+                            done
+                            # 服务完成，停止 tail 进程
+                            pkill -f "tail -f.*update.log" 2>/dev/null || true
+                        ) &
+                        
+                        # 实时显示日志（带超时保护，最多等待 10 分钟）
+                        timeout 600 tail -f "$LOG_FILE" 2>/dev/null || true
+                    else
+                        # 如果没有日志文件，使用 journalctl 实时显示
+                        (
+                            # 等待服务完成
+                            while systemctl is-active --quiet dockter-agent-updater.service 2>/dev/null; do
+                                sleep 0.2
+                            done
+                            # 服务完成，停止 journalctl
+                            pkill -f "journalctl.*dockter-agent-updater" 2>/dev/null || true
+                        ) &
+                        
+                        # 实时显示 journal 日志（带超时保护）
+                        timeout 600 journalctl -u dockter-agent-updater -f --no-pager 2>/dev/null || true
+                        
+                        # 显示最终日志
+                        journalctl -u dockter-agent-updater --no-pager -n 30 2>/dev/null
+                    fi
+                    
+                    echo "----------------------------------------"
+                    
+                    # 检查更新结果
+                    sleep 1
+                    if systemctl is-failed --quiet dockter-agent-updater.service 2>/dev/null; then
+                        print_error "更新失败"
+                        print_info "详细日志请查看: $INSTALL_DIR/logs/update.log"
+                        print_info "或使用: journalctl -u dockter-agent-updater -n 100"
+                        exit 1
+                    else
+                        # 检查服务是否成功启动
+                        sleep 2
+                        if systemctl is-active --quiet "$SERVICE_NAME"; then
+                            print_success "更新完成，服务已重启"
+                        else
+                            print_warning "更新完成，但服务未运行"
+                            print_info "请检查服务状态: systemctl status $SERVICE_NAME"
+                        fi
+                    fi
+                else
+                    print_error "启动更新器服务失败"
+                    exit 1
+                fi
             fi
+        else
+            print_error "更新器服务不存在，无法使用更新器更新"
             exit 1
         fi
-    elif command -v curl &> /dev/null; then
-        print_info "使用 curl 下载..."
-        if curl -L --progress-bar "$download_url" -o "$INSTALL_DIR/dockter-agent.new"; then
-            chmod +x "$INSTALL_DIR/dockter-agent.new"
-            mv "$INSTALL_DIR/dockter-agent.new" "$INSTALL_DIR/dockter-agent"
-            print_success "下载完成"
+        return 0
+    fi
+    
+    # dt update - 直接更新（不使用更新器服务，用于用户手动更新）
+    # 直接调用更新脚本，不使用更新器服务
+    print_info "直接更新（不使用更新器服务）..."
+    
+    # 检查更新脚本是否存在
+    if [ -f "$INSTALL_DIR/update-agent.sh" ]; then
+        # 直接调用更新脚本（不带参数，使用默认 GitHub URL）
+        if "$INSTALL_DIR/update-agent.sh"; then
+            print_success "更新完成"
+            return 0
         else
-            print_error "下载失败"
-            # 恢复备份（如果存在）
-            if [ -f "$BACKUP_FILE" ]; then
-                print_info "恢复备份版本..."
-                cp "$BACKUP_FILE" "$INSTALL_DIR/dockter-agent"
-                start_service
-            fi
+            print_error "更新失败，请查看日志: $INSTALL_DIR/logs/update.log"
             exit 1
         fi
     else
-        print_error "未找到 wget 或 curl，无法下载"
-        exit 1
-    fi
-    
-    # 验证新版本
-    if [ ! -f "$INSTALL_DIR/dockter-agent" ] || [ ! -x "$INSTALL_DIR/dockter-agent" ]; then
-        print_error "更新后的二进制文件无效"
-        # 恢复备份（如果存在）
-        if [ -f "$BACKUP_FILE" ]; then
-            print_info "恢复备份版本..."
-            cp "$BACKUP_FILE" "$INSTALL_DIR/dockter-agent"
+        print_warning "更新脚本不存在，使用传统方式更新..."
+        # 检查更新器服务是否存在
+        if [ -f "/etc/systemd/system/dockter-agent-updater.service" ]; then
+            # 使用 systemd 服务触发更新
+            print_info "启动更新器服务..."
+            if systemctl start dockter-agent-updater.service; then
+                print_success "更新任务已启动"
+                echo
+                print_info "实时更新日志:"
+                echo "----------------------------------------"
+                
+                # 等待一小段时间让服务开始写入日志
+                sleep 0.5
+                
+                # 实时显示日志
+                LOG_FILE="$INSTALL_DIR/logs/update.log"
+                if [ -f "$LOG_FILE" ]; then
+                    # 实时跟踪日志文件
+                    # 使用 tail -f 从文件末尾开始跟踪（日志文件每次更新都会清空，所以不会有重复）
+                    # 在后台监控服务状态，当服务完成时停止 tail
+                    (
+                        # 等待服务完成
+                        while systemctl is-active --quiet dockter-agent-updater.service 2>/dev/null; do
+                            sleep 0.2
+                        done
+                        # 服务完成，停止 tail 进程
+                        pkill -f "tail -f.*update.log" 2>/dev/null || true
+                    ) &
+                    
+                    # 实时显示日志（带超时保护，最多等待 10 分钟）
+                    timeout 600 tail -f "$LOG_FILE" 2>/dev/null || true
+                else
+                    # 如果没有日志文件，使用 journalctl 实时显示
+                    (
+                        # 等待服务完成
+                        while systemctl is-active --quiet dockter-agent-updater.service 2>/dev/null; do
+                            sleep 0.2
+                        done
+                        # 服务完成，停止 journalctl
+                        pkill -f "journalctl.*dockter-agent-updater" 2>/dev/null || true
+                    ) &
+                    
+                    # 实时显示 journal 日志（带超时保护）
+                    timeout 600 journalctl -u dockter-agent-updater -f --no-pager 2>/dev/null || true
+                    
+                    # 显示最终日志
+                    journalctl -u dockter-agent-updater --no-pager -n 30 2>/dev/null
+                fi
+                
+                echo "----------------------------------------"
+                
+                # 检查更新结果
+                sleep 1
+                if systemctl is-failed --quiet dockter-agent-updater.service 2>/dev/null; then
+                    print_error "更新失败"
+                    print_info "详细日志请查看: $INSTALL_DIR/logs/update.log"
+                    print_info "或使用: journalctl -u dockter-agent-updater -n 100"
+                    exit 1
+                else
+                    # 检查服务是否成功启动
+                    sleep 2
+                    if systemctl is-active --quiet "$SERVICE_NAME"; then
+                        print_success "更新完成，服务已重启"
+                    else
+                        print_warning "更新完成，但服务未运行"
+                        print_info "请检查服务状态: systemctl status $SERVICE_NAME"
+                    fi
+                fi
+            else
+                print_error "启动更新器服务失败"
+                exit 1
+            fi
+        else
+            # 如果更新器服务不存在，使用传统方式更新
+            print_warning "更新器服务未找到，使用传统方式更新..."
+            
+            # 检测架构
+            ARCH=$(uname -m)
+            case $ARCH in
+                x86_64)
+                    ARCH="amd64"
+                    ;;
+                aarch64|arm64)
+                    ARCH="arm64"
+                    ;;
+                *)
+                    print_error "不支持的架构: $ARCH"
+                    exit 1
+                    ;;
+            esac
+            
+            local binary_name="dockter-agent_linux_$ARCH"
+            local github_url="https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/releases/latest/$binary_name"
+            
+            # 停止服务
+            if systemctl is-active --quiet "$SERVICE_NAME"; then
+                print_info "停止服务..."
+                systemctl stop "$SERVICE_NAME"
+                sleep 1
+            fi
+            
+            # 下载新版本
+            if [ -n "$1" ]; then
+                # 使用用户指定的 URL
+                print_info "从指定 URL 下载新版本: $1"
+                download_url="$1"
+            else
+                # 自动从 GitHub latest 下载
+                print_info "从 GitHub 自动下载最新版本..."
+                print_info "架构: $ARCH"
+                print_info "URL: $github_url"
+                download_url="$github_url"
+            fi
+            
+            # 下载文件
+            if command -v wget &> /dev/null; then
+                print_info "使用 wget 下载..."
+                if wget -q --show-progress "$download_url" -O "$INSTALL_DIR/dockter-agent.new"; then
+                    chmod +x "$INSTALL_DIR/dockter-agent.new"
+                    mv "$INSTALL_DIR/dockter-agent.new" "$INSTALL_DIR/dockter-agent"
+                    print_success "下载完成"
+                else
+                    print_error "下载失败"
+                    exit 1
+                fi
+            elif command -v curl &> /dev/null; then
+                print_info "使用 curl 下载..."
+                if curl -L --progress-bar "$download_url" -o "$INSTALL_DIR/dockter-agent.new"; then
+                    chmod +x "$INSTALL_DIR/dockter-agent.new"
+                    mv "$INSTALL_DIR/dockter-agent.new" "$INSTALL_DIR/dockter-agent"
+                    print_success "下载完成"
+                else
+                    print_error "下载失败"
+                    exit 1
+                fi
+            else
+                print_error "未找到 wget 或 curl，无法下载"
+                exit 1
+            fi
+            
+            # 验证新版本
+            if [ ! -f "$INSTALL_DIR/dockter-agent" ] || [ ! -x "$INSTALL_DIR/dockter-agent" ]; then
+                print_error "更新后的二进制文件无效"
+                exit 1
+            fi
+            
+            print_success "更新完成"
+            
+            # 启动服务
             start_service
         fi
-        exit 1
     fi
-    
-    print_success "更新完成"
-    
-    # 启动服务
-    start_service
 }
 
 # 卸载服务
@@ -803,6 +1159,13 @@ uninstall_service() {
     
     print_info "删除服务文件..."
     rm -f "$SERVICE_FILE"
+    
+    # 删除更新器服务
+    if [ -f "/etc/systemd/system/dockter-agent-updater.service" ]; then
+        print_info "删除更新器服务..."
+        rm -f "/etc/systemd/system/dockter-agent-updater.service"
+    fi
+    
     systemctl daemon-reload
     
     print_info "删除命令工具..."
@@ -981,6 +1344,9 @@ Dockter Agent 管理工具
   token           显示 API Token
   address         显示访问地址
   update [URL]    更新服务（自动从 GitHub latest 下载，可选：指定下载 URL）
+                  使用更新器服务进行更新，可通过以下命令查看更新日志：
+                  journalctl -u dockter-agent-updater -f
+                  或 tail -f /opt/dockter-agent/logs/update.log
   uninstall       卸载服务
   enable          启用自启动
   disable         禁用自启动
@@ -994,7 +1360,12 @@ Dockter Agent 管理工具
   dt info          # 查看访问信息（地址/Token/端口）
   dt address       # 查看访问地址
   dt token         # 查看 Token
-  dt update        # 更新服务
+  dt update        # 更新服务（使用更新器服务）
+  dt update URL    # 从指定 URL 更新服务
+
+更新器服务:
+  系统还安装了一个独立的更新器服务，可以通过以下方式触发更新：
+  systemctl start dockter-agent-updater
 EOF
 }
 
@@ -1022,7 +1393,16 @@ case "$1" in
         show_token
         ;;
     address|url)
-        show_address
+        # 显示访问地址
+        PORT=""
+        if [ -f "$INSTALL_DIR/.env" ]; then
+            PORT=$(grep "^DOCKTER_API_PORT=" "$INSTALL_DIR/.env" | cut -d'=' -f2)
+        fi
+        if [ -z "$PORT" ]; then
+            PORT="19029"  # 默认端口
+        fi
+        SERVER_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
+        echo "http://$SERVER_IP:$PORT"
         ;;
     update)
         update_service "$2"
@@ -1128,8 +1508,13 @@ show_install_info() {
     echo "   dt restart   # 重启服务"
     echo "   dt port      # 查看端口"
     echo "   dt token     # 查看 Token"
-    echo "   dt update    # 更新服务"
+    echo "   dt update    # 更新服务（使用更新器服务）"
     echo "   dt uninstall # 卸载服务"
+    echo
+    echo "🔄  更新器服务:"
+    echo "   systemctl start dockter-agent-updater  # 触发自动更新"
+    echo "   journalctl -u dockter-agent-updater -f  # 查看更新日志"
+    echo "   tail -f $INSTALL_DIR/logs/update.log    # 查看更新日志文件"
     echo
     firewall_notice
     echo "====================================="
@@ -1169,6 +1554,8 @@ main() {
     # download_binary 已在前面调用，这里不再重复下载
     create_config
     create_systemd_service
+    create_update_script
+    create_updater_service
     create_dt_command
     enable_autostart
     
