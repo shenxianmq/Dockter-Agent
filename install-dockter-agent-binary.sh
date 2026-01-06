@@ -785,7 +785,6 @@ update_service() {
     print_success "更新完成"
     
     # 启动服务
-    print_info "启动服务..."
     start_service
 }
 
