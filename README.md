@@ -45,23 +45,6 @@ curl -fsSL -o install-dockter-agent-docker.sh https://raw.githubusercontent.com/
 && sudo ./install-dockter-agent-docker.sh
 ```
 
-## OpenWrt 安装（专用脚本）
-
-适用于 OpenWrt / iStoreOS 等基于 OpenWrt 的系统：
-
-```bash
-curl -fsSL -o install-dockter-agent-openwrt.sh https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-openwrt.sh \
-&& chmod +x install-dockter-agent-openwrt.sh \
-&& sh install-dockter-agent-openwrt.sh
-```
-
-> **注意**：
->
-> - OpenWrt 系统使用 BusyBox，某些命令可能有所不同
-> - 使用 procd 和 init.d 服务管理（而非 systemd）
-> - 支持 sidecar 更新器模式：`dt update sidecar`
-> - 需要确保已安装 `wget` 或 `curl`：`opkg update && opkg install wget`
-
 # 🔐 安装完成后信息
 
 安装完成后，脚本会显示以下信息：
