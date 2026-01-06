@@ -45,6 +45,23 @@ curl -fsSL -o install-dockter-agent-docker.sh https://raw.githubusercontent.com/
 && sudo ./install-dockter-agent-docker.sh
 ```
 
+## OpenWrt 安装（专用脚本）
+
+适用于 OpenWrt / iStoreOS 等基于 OpenWrt 的系统：
+
+```bash
+curl -fsSL -o install-dockter-agent-openwrt.sh https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-openwrt.sh \
+&& chmod +x install-dockter-agent-openwrt.sh \
+&& sh install-dockter-agent-openwrt.sh
+```
+
+> **注意**：
+>
+> - OpenWrt 系统使用 BusyBox，某些命令可能有所不同
+> - 使用 procd 和 init.d 服务管理（而非 systemd）
+> - 支持 sidecar 更新器模式：`dt update sidecar`
+> - 需要确保已安装 `wget` 或 `curl`：`opkg update && opkg install wget`
+
 # 🔐 安装完成后信息
 
 安装完成后，脚本会显示以下信息：
@@ -78,7 +95,40 @@ ufw allow 19029/tcp
 
 # CentOS/RHEL (firewalld)
 firewall-cmd --add-port=19029/tcp --permanent && firewall-cmd --reload
+
+# OpenWrt (uci)
+uci add firewall rule
+uci set firewall.@rule[-1].name='Dockter Agent'
+uci set firewall.@rule[-1].src='wan'
+uci set firewall.@rule[-1].dest_port='19029'
+uci set firewall.@rule[-1].target='ACCEPT'
+uci commit firewall
+/etc/init.d/firewall reload
 ```
+
+# 🛠️ 管理命令
+
+安装完成后，可以使用 `dt` 命令管理服务：
+
+```bash
+dt status      # 查看服务状态
+dt start       # 启动服务
+dt stop        # 停止服务
+dt restart     # 重启服务
+dt info        # 查看访问信息（地址/Token/端口）
+dt update      # 更新服务
+dt update sidecar  # 使用更新器服务更新（实时显示日志，仅 OpenWrt）
+dt uninstall   # 卸载服务
+```
+
+> **OpenWrt 系统**：也可以使用标准的 init.d 命令：
+>
+> ```bash
+> /etc/init.d/dockter-agent start
+> /etc/init.d/dockter-agent stop
+> /etc/init.d/dockter-agent restart
+> /etc/init.d/dockter-agent enable   # 启用自启动
+> ```
 
 # ❓ 常见问题
 
