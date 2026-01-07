@@ -209,8 +209,14 @@ if [[ "$confirm" =~ ^[Yy]$ ]]; then
 
   # 检测 Docker Compose 命令
   if docker compose version &>/dev/null; then
+    echo "正在拉取最新镜像..."
+    docker compose pull
+    echo "启动服务..."
     docker compose up -d
   elif command -v docker-compose &>/dev/null; then
+    echo "正在拉取最新镜像..."
+    docker-compose pull
+    echo "启动服务..."
     docker-compose up -d
   else
     echo "❌ 错误：未找到 docker compose 或 docker-compose 命令"
