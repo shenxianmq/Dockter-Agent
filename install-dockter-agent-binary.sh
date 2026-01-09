@@ -531,7 +531,7 @@ create_systemd_service() {
 [Unit]
 Description=Dockter Agent Service
 After=network.target docker.service
-Requires=docker.service
+Wants=docker.service
 
 [Service]
 Type=simple
