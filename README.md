@@ -51,7 +51,7 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/ma
 >
 > ```bash
 > GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
-> bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
+> curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
 > ```
 
 # 🔐 安装完成后信息
