@@ -669,9 +669,9 @@ log_info "使用 base URL: $GITHUB_BASE_URL"
 log_info "下载 URL: $DOWNLOAD_URL"
 
 # 停止服务
-if launchctl list | grep -q "$SERVICE_NAME"; then
+if sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1; then
     log_info "停止服务..."
-    sudo launchctl stop "$SERVICE_NAME" || {
+    sudo launchctl stop "$SERVICE_NAME" 2>/dev/null || {
         log_error "停止服务失败"
         exit 1
     }
@@ -718,9 +718,9 @@ fi
 # 启动服务
 log_info "启动服务..."
 PLIST_FILE="/Library/LaunchDaemons/com.dockter.agent.plist"
-if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null || sudo launchctl start "$SERVICE_NAME"; then
+if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null || sudo launchctl start "$SERVICE_NAME" 2>/dev/null; then
     sleep 2
-    if launchctl list | grep -q "$SERVICE_NAME"; then
+    if sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1; then
         log_info "服务启动成功"
         log_info "========================================="
         log_info "Agent 更新完成"
@@ -777,18 +777,19 @@ print_error() {
 
 # 检查服务状态
 check_service() {
-    if ! launchctl list | grep -q "$SERVICE_NAME"; then
-        print_warning "服务未运行"
-        return 1
+    # macOS 系统级服务需要使用 sudo launchctl list 或检查进程
+    if sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1; then
+        return 0
     fi
-    return 0
+    print_warning "服务未运行"
+    return 1
 }
 
 # 显示状态
 show_status() {
-    if launchctl list | grep -q "$SERVICE_NAME"; then
+    if sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1; then
         print_success "服务运行中"
-        launchctl list "$SERVICE_NAME" 2>/dev/null || true
+        sudo launchctl list "$SERVICE_NAME" 2>/dev/null || pgrep -af "dockter-agent" || true
     else
         print_error "服务未运行"
     fi
@@ -825,12 +826,31 @@ show_token() {
 # 启动服务
 start_service() {
     print_info "启动服务..."
-    sudo launchctl load -w "$PLIST_FILE" 2>/dev/null || sudo launchctl start "$SERVICE_NAME"
+    
+    # 先检查 plist 文件是否存在
+    if [ ! -f "$PLIST_FILE" ]; then
+        print_error "服务文件不存在: $PLIST_FILE"
+        print_info "请先运行安装脚本"
+        exit 1
+    fi
+    
+    # 加载服务
+    if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null; then
+        print_info "服务已加载"
+    else
+        # 如果加载失败，尝试启动（可能已经加载）
+        sudo launchctl start "$SERVICE_NAME" 2>/dev/null || true
+    fi
+    
     sleep 2
+    
+    # 检查服务是否运行
     if check_service; then
         print_success "服务启动成功"
     else
         print_error "服务启动失败"
+        print_info "请检查日志文件: $LOG_DIR/dockter-agent.err.log"
+        print_info "或使用命令查看: sudo launchctl list $SERVICE_NAME"
         exit 1
     fi
 }
@@ -838,9 +858,9 @@ start_service() {
 # 停止服务
 stop_service() {
     print_info "停止服务..."
-    sudo launchctl unload "$PLIST_FILE" 2>/dev/null || sudo launchctl stop "$SERVICE_NAME"
+    sudo launchctl unload "$PLIST_FILE" 2>/dev/null || sudo launchctl stop "$SERVICE_NAME" 2>/dev/null || true
     sleep 1
-    if ! launchctl list | grep -q "$SERVICE_NAME"; then
+    if ! (sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1); then
         print_success "服务已停止"
     else
         print_error "服务停止失败"
@@ -1123,13 +1143,31 @@ DTEOF
 # 启动服务
 start_service() {
     print_info "启动服务..."
-    sudo launchctl load -w "$PLIST_FILE" 2>/dev/null || sudo launchctl start "$SERVICE_NAME"
+    
+    # 先检查 plist 文件是否存在
+    if [ ! -f "$PLIST_FILE" ]; then
+        print_error "服务文件不存在: $PLIST_FILE"
+        print_info "请先运行安装脚本"
+        exit 1
+    fi
+    
+    # 加载服务
+    if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null; then
+        print_info "服务已加载"
+    else
+        # 如果加载失败，尝试启动（可能已经加载）
+        sudo launchctl start "$SERVICE_NAME" 2>/dev/null || true
+    fi
+    
     sleep 2
     
-    if launchctl list | grep -q "$SERVICE_NAME"; then
+    # 检查服务是否运行
+    if sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1; then
         print_success "服务启动成功"
     else
         print_error "服务启动失败"
+        print_info "请检查日志文件: $LOG_DIR/dockter-agent.err.log"
+        print_info "或使用命令查看: sudo launchctl list $SERVICE_NAME"
         exit 1
     fi
 }
