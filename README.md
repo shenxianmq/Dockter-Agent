@@ -38,11 +38,27 @@ curl -fsSL https://get.docker.com | bash
 
 #### 二进制安装
 
+**Linux / Unraid 系统：**
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
+```
+
+**macOS 系统：**
+
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
 ```
 
 #### Docker 部署
+
+**Linux / Unraid 系统：**
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh")
+```
+
+**macOS 系统：**
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh" | bash
@@ -55,12 +71,30 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 
 #### 二进制安装
 
+**Linux / Unraid 系统：**
+
+```bash
+GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
+```
+
+**macOS 系统：**
+
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
 curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
 ```
 
 #### Docker 部署
+
+**Linux / Unraid 系统：**
+
+```bash
+GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
+```
+
+**macOS 系统：**
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
@@ -93,7 +127,7 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 #### 标准 Linux 系统
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-binary.sh" | bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-binary.sh")
 ```
 
 #### Unraid 系统
@@ -101,7 +135,7 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 > Unraid 基于 Slackware Linux，使用 SysVinit 而非 systemd，需要使用专用安装脚本。
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-unraid.sh" | bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-unraid.sh")
 ```
 
 #### macOS 系统
@@ -120,14 +154,14 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
-curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-binary.sh" | bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-binary.sh")
 ```
 
 #### Unraid 系统
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
-curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-unraid.sh" | bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-unraid.sh")
 ```
 
 #### macOS 系统
@@ -143,6 +177,14 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 
 ### GitHub 直连
 
+**Linux / Unraid 系统：**
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh")
+```
+
+**macOS 系统：**
+
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh" | bash
 ```
@@ -150,6 +192,15 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 ### CDN 加速源（推荐，国内访问更快）
 
 > 📝 **注意**：使用 CDN 安装后，`dt update` 命令会自动使用相同的 CDN 源进行更新。
+
+**Linux / Unraid 系统：**
+
+```bash
+GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
+bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh")
+```
+
+**macOS 系统：**
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
