@@ -536,7 +536,9 @@ create_launchd_service() {
         [[ -z "$key" ]] && continue
         # 移除引号
         value=$(echo "$value" | sed "s/^['\"]//;s/['\"]$//")
-        env_vars="${env_vars}    <string>${key}=${value}</string>
+        # launchd plist 格式：<key>KEY</key><string>VALUE</string>
+        env_vars="${env_vars}        <key>${key}</key>
+        <string>${value}</string>
 "
     done < "$INSTALL_DIR/.env"
     
@@ -834,12 +836,19 @@ start_service() {
         exit 1
     fi
     
+    # 先检查服务是否已加载，如果已加载则先卸载
+    if sudo launchctl list "$SERVICE_NAME" >/dev/null 2>&1; then
+        print_info "服务已存在，先卸载..."
+        sudo launchctl unload "$PLIST_FILE" 2>/dev/null || sudo launchctl bootout system/"$SERVICE_NAME" 2>/dev/null || true
+        sleep 1
+    fi
+    
     # 加载服务
-    if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null; then
+    if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null || sudo launchctl bootstrap system "$PLIST_FILE" 2>/dev/null; then
         print_info "服务已加载"
     else
-        # 如果加载失败，尝试启动（可能已经加载）
-        sudo launchctl start "$SERVICE_NAME" 2>/dev/null || true
+        print_error "服务加载失败"
+        exit 1
     fi
     
     sleep 2
@@ -1151,12 +1160,19 @@ start_service() {
         exit 1
     fi
     
+    # 先检查服务是否已加载，如果已加载则先卸载
+    if sudo launchctl list "$SERVICE_NAME" >/dev/null 2>&1; then
+        print_info "服务已存在，先卸载..."
+        sudo launchctl unload "$PLIST_FILE" 2>/dev/null || sudo launchctl bootout system/"$SERVICE_NAME" 2>/dev/null || true
+        sleep 1
+    fi
+    
     # 加载服务
-    if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null; then
+    if sudo launchctl load -w "$PLIST_FILE" 2>/dev/null || sudo launchctl bootstrap system "$PLIST_FILE" 2>/dev/null; then
         print_info "服务已加载"
     else
-        # 如果加载失败，尝试启动（可能已经加载）
-        sudo launchctl start "$SERVICE_NAME" 2>/dev/null || true
+        print_error "服务加载失败"
+        exit 1
     fi
     
     sleep 2
