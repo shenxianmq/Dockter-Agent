@@ -38,14 +38,36 @@ curl -fsSL https://get.docker.com | bash
 
 #### 二进制安装
 
+**Linux / Unraid 系统：**
+
 ```bash
 bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
 ```
 
+**macOS 系统（推荐方式）：**
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
+```
+
+或者先下载再执行：
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" -o /tmp/install.sh && bash /tmp/install.sh
+```
+
 #### Docker 部署
+
+**Linux / Unraid 系统：**
 
 ```bash
 bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh")
+```
+
+**macOS 系统：**
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh" | bash
 ```
 
 ### CDN 加速源（推荐，国内访问更快）
@@ -55,16 +77,34 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/ma
 
 #### 二进制安装
 
+**Linux / Unraid 系统：**
+
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
 bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
 ```
 
+**macOS 系统：**
+
+```bash
+GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
+```
+
 #### Docker 部署
+
+**Linux / Unraid 系统：**
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
 bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
+```
+
+**macOS 系统：**
+
+```bash
+GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
 ```
 
 **支持的自动检测：**
@@ -109,7 +149,13 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/ma
 > macOS 使用 launchd 而非 systemd，需要使用专用安装脚本。支持 Intel (amd64) 和 Apple Silicon (arm64) 架构。
 
 ```bash
-bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-macos.sh")
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-macos.sh" | bash
+```
+
+或者先下载再执行：
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-macos.sh" -o /tmp/install-macos.sh && bash /tmp/install-macos.sh
 ```
 
 ### CDN 加速源（推荐，国内访问更快）
@@ -134,7 +180,7 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/ma
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
-bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-macos.sh")
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-macos.sh" | bash
 ```
 
 > ⚠️ **重要提示**: Unraid 系统运行在 RAM 中（从 U 盘启动），重启后需要重新启动服务。安装脚本会自动在 `/etc/rc.d/rc.local` 中添加启动命令。
