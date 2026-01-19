@@ -55,6 +55,15 @@ fi
 detect_system() {
     print_info "正在检测系统类型..."
     
+    # 检测 macOS
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        OS_VERSION=$(sw_vers -productVersion 2>/dev/null || echo "未知")
+        print_success "检测到 macOS 系统: $OS_VERSION"
+        SYSTEM_TYPE="macos"
+        INSTALL_SCRIPT="install-dockter-agent-macos.sh"
+        return 0
+    fi
+    
     # 检测 Unraid
     if [ -f /etc/unraid-version ] || [ -d /boot/config/plugins ]; then
         if [ -f /etc/unraid-version ]; then
