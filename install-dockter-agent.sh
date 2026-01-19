@@ -80,13 +80,19 @@ detect_system() {
     # 检测是否为 Slackware 系统（Unraid 基于 Slackware）
     if [ -f /etc/slackware-version ] || [ -f /etc/slackware-release ]; then
         print_warning "检测到 Slackware 系统，可能是 Unraid"
-        echo
-        read -p "这是 Unraid 系统吗？(y/N): " is_unraid
-        is_unraid=${is_unraid:-N}
-        if [[ "$is_unraid" =~ ^[Yy]$ ]]; then
-            SYSTEM_TYPE="unraid"
-            INSTALL_SCRIPT="install-dockter-agent-unraid.sh"
-            return 0
+        # 检查是否在交互式终端中
+        if [ -t 0 ]; then
+            echo
+            read -p "这是 Unraid 系统吗？(y/N): " is_unraid
+            is_unraid=${is_unraid:-N}
+            if [[ "$is_unraid" =~ ^[Yy]$ ]]; then
+                SYSTEM_TYPE="unraid"
+                INSTALL_SCRIPT="install-dockter-agent-unraid.sh"
+                return 0
+            fi
+        else
+            # 非交互式环境，默认不是 Unraid
+            print_info "非交互式环境，默认按普通 Linux 系统处理"
         fi
     fi
     
@@ -118,6 +124,12 @@ detect_system() {
 
 # HTTP 代理设置
 setup_proxy() {
+    # 检查是否在交互式终端中
+    if [ ! -t 0 ]; then
+        # 非交互式环境（如管道输入），跳过代理设置
+        return 0
+    fi
+    
     echo
     echo "是否需要使用 HTTP 代理？"
     echo "1) 不使用代理（默认）"
@@ -189,6 +201,13 @@ ask_install_method() {
         return 0
     fi
     
+    # 检查是否在交互式终端中
+    if [ ! -t 0 ]; then
+        # 非交互式环境，使用默认值（二进制安装）
+        print_info "非交互式环境，使用默认安装方式：二进制安装"
+        return 0
+    fi
+    
     echo
     echo "请选择安装方式："
     echo "1) 二进制安装（默认，推荐）"
@@ -210,7 +229,10 @@ ask_install_method() {
 
 # 主函数
 main() {
-    clear
+    # 只在交互式终端中清屏
+    if [ -t 0 ]; then
+        clear
+    fi
     
     print_title
     
@@ -233,8 +255,13 @@ main() {
         print_warning "⚠️  重要提示"
         echo "OpenWrt 系统不支持二进制安装方式"
         echo "将自动使用 Docker 部署方式"
-        echo
-        read -p "按 Enter 键继续使用 Docker 部署，或按 Ctrl+C 取消..." dummy
+        # 检查是否在交互式终端中
+        if [ -t 0 ]; then
+            echo
+            read -p "按 Enter 键继续使用 Docker 部署，或按 Ctrl+C 取消..." dummy
+        else
+            print_info "非交互式环境，自动继续使用 Docker 部署"
+        fi
         SYSTEM_TYPE="docker"
         INSTALL_SCRIPT="install-dockter-agent-docker.sh"
     fi
