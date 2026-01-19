@@ -58,10 +58,17 @@ detect_system() {
     # 检测 macOS
     if [[ "$(uname -s)" == "Darwin" ]]; then
         OS_VERSION=$(sw_vers -productVersion 2>/dev/null || echo "未知")
-        print_success "检测到 macOS 系统: $OS_VERSION"
-        SYSTEM_TYPE="macos"
-        INSTALL_SCRIPT="install-dockter-agent-macos.sh"
-        return 0
+        print_warning "检测到 macOS 系统: $OS_VERSION"
+        echo
+        print_error "macOS 系统不支持二进制安装方式"
+        echo
+        print_info "请使用 Docker 部署方式："
+        echo "  bash <(curl -fsSL \"https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh\")"
+        echo
+        print_info "或 macOS 用户："
+        echo "  curl -fsSL \"https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent-docker.sh\" -o /tmp/install-docker.sh && bash /tmp/install-docker.sh"
+        echo
+        exit 1
     fi
     
     # 检测 Unraid
