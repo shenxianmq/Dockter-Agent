@@ -41,7 +41,7 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/ma
 **macOS 系统：**
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" -o /tmp/install.sh && bash /tmp/install.sh
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" -o /tmp/install-dockter-agent.sh && bash /tmp/install-dockter-agent.sh
 ```
 
 > 💡 **国内用户**：如果 GitHub 访问较慢，可以使用 CDN 加速源：
@@ -55,7 +55,7 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 >
 > ```bash
 > GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
-> curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" -o /tmp/install.sh && bash /tmp/install.sh
+> curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" -o /tmp/install-dockter-agent.sh && bash /tmp/install-dockter-agent.sh
 > ```
 
 # 🔐 安装完成后信息
