@@ -98,7 +98,7 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/ma
 
 ```bash
 GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
-curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" | bash
+curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh" -o /tmp/install.sh && bash /tmp/install.sh
 ```
 
 **支持的自动检测：**
