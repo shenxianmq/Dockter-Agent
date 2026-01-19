@@ -122,35 +122,6 @@ detect_system() {
     return 0
 }
 
-# HTTP 代理设置
-setup_proxy() {
-    # 检查是否在交互式终端中
-    if [ ! -t 0 ]; then
-        # 非交互式环境（如管道输入），跳过代理设置
-        return 0
-    fi
-    
-    echo
-    echo "是否需要使用 HTTP 代理？"
-    echo "1) 不使用代理（默认）"
-    echo "2) 使用代理"
-    read -p "请选择 (1/2 默认1): " proxy_choice
-    proxy_choice=${proxy_choice:-1}
-    
-    if [[ "$proxy_choice" == "2" ]]; then
-        read -p "请输入代理地址（例如: http://127.0.0.1:7890）: " PROXY_URL
-        if [[ -n "$PROXY_URL" ]]; then
-            # 设置 DOCKTER_PROXY 环境变量，子脚本会自动读取
-            export DOCKTER_PROXY="$PROXY_URL"
-            export HTTP_PROXY="$PROXY_URL"
-            export HTTPS_PROXY="$PROXY_URL"
-            export http_proxy="$PROXY_URL"
-            export https_proxy="$PROXY_URL"
-            print_success "✅ 已设置代理: $PROXY_URL"
-        fi
-    fi
-}
-
 # 下载并执行安装脚本
 download_and_execute_script() {
     # 直接使用根目录的脚本（不再使用 cdn/ 目录）
@@ -160,20 +131,12 @@ download_and_execute_script() {
     print_info "正在下载安装脚本: ${INSTALL_SCRIPT}"
     print_info "URL: ${script_url}"
     
-    # 使用 curl 或 wget 下载（会自动使用 HTTP_PROXY/HTTPS_PROXY 环境变量）
-    # 如果设置了 DOCKTER_PROXY，使用 --proxy 参数
-    local curl_proxy=""
-    if [ -n "$DOCKTER_PROXY" ]; then
-        curl_proxy="--proxy $DOCKTER_PROXY"
-    fi
-    
     if command -v curl >/dev/null 2>&1; then
-        if ! curl -s $curl_proxy --max-time 10 --connect-timeout 5 -f "${script_url}" -o "${temp_script}"; then
+        if ! curl -s --max-time 10 --connect-timeout 5 -f "${script_url}" -o "${temp_script}"; then
             print_error "下载失败，请检查网络连接"
             exit 1
         fi
     elif command -v wget >/dev/null 2>&1; then
-        # wget 会自动使用 HTTP_PROXY/HTTPS_PROXY 环境变量
         if ! wget -q --timeout=10 --tries=1 "${script_url}" -O "${temp_script}"; then
             print_error "下载失败，请检查网络连接"
             exit 1
@@ -191,7 +154,6 @@ download_and_execute_script() {
     echo "====================================="
     echo
     
-    # 执行脚本（子脚本会自己处理代理设置）
     exec "${temp_script}" "$@"
 }
 
@@ -242,9 +204,6 @@ main() {
         echo "使用: sudo $0"
         exit 1
     fi
-    
-    # 设置代理（如果需要）
-    setup_proxy
     
     # 检测系统类型
     detect_system

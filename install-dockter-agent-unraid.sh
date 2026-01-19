@@ -55,41 +55,6 @@ else
     GITHUB_RELEASES_BASE="${GITHUB_BASE_URL}/releases/latest"
 fi
 
-# HTTP 代理设置
-setup_proxy() {
-    # 优先检查环境变量 DOCKTER_PROXY
-    if [ -n "$DOCKTER_PROXY" ]; then
-        export HTTP_PROXY="$DOCKTER_PROXY"
-        export HTTPS_PROXY="$DOCKTER_PROXY"
-        export http_proxy="$DOCKTER_PROXY"
-        export https_proxy="$DOCKTER_PROXY"
-        USE_PROXY="--proxy $DOCKTER_PROXY"
-        print_info "✅ 从环境变量 DOCKTER_PROXY 读取代理: $DOCKTER_PROXY"
-        return 0
-    fi
-    
-    echo
-    echo "是否需要使用 HTTP 代理？"
-    echo "1) 不使用代理（默认）"
-    echo "2) 使用代理"
-    read -p "请选择 (1/2 默认1): " proxy_choice
-    proxy_choice=${proxy_choice:-1}
-    
-    USE_PROXY=""
-    if [[ "$proxy_choice" == "2" ]]; then
-        read -p "请输入代理地址（例如: http://127.0.0.1:7890）: " PROXY_URL
-        if [[ -n "$PROXY_URL" ]]; then
-            export HTTP_PROXY="$PROXY_URL"
-            export HTTPS_PROXY="$PROXY_URL"
-            export http_proxy="$PROXY_URL"
-            export https_proxy="$PROXY_URL"
-            export DOCKTER_PROXY="$PROXY_URL"
-            USE_PROXY="--proxy $PROXY_URL"
-            print_success "✅ 已设置代理: $PROXY_URL"
-        fi
-    fi
-}
-
 # 检查是否为 root 用户
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -164,7 +129,7 @@ get_latest_version() {
     local version_url="${GITHUB_RELEASES_BASE}/version.txt"
     
     if command -v curl >/dev/null 2>&1; then
-        local version_info=$(curl -s $USE_PROXY --max-time 5 --connect-timeout 3 "$version_url" 2>/dev/null || echo "")
+        local version_info=$(curl -s --max-time 5 --connect-timeout 3 "$version_url" 2>/dev/null || echo "")
         if [ -n "$version_info" ]; then
             local version=$(echo "$version_info" | grep -i "^Version:" | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
             if [ -n "$version" ]; then
@@ -534,8 +499,7 @@ create_config() {
 {
   "global_settings": {
     "api_token": "$DOCKTER_API_TOKEN",
-    "debug_mode": $DOCKTER_DEBUG,
-    "http_proxy": ""
+    "debug_mode": $DOCKTER_DEBUG
   },
   "docker_settings": {
     "docker_stack_directory": "$COMPOSE_ROOT",
@@ -1467,7 +1431,6 @@ show_install_info() {
 main() {
     print_title
     check_root
-    setup_proxy
     detect_unraid
     
     # 首先检测架构（下载二进制文件需要）
