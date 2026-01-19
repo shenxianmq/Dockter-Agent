@@ -47,7 +47,7 @@ curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/inst
 > 💡 **国内用户**：如果 GitHub 访问较慢，可以使用 CDN 加速源：
 >
 > ```bash
-> GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main" \
+> export GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@main"
 > bash <(curl -fsSL "https://raw.githubusercontent.com/shenxianmq/Dockter-Agent/main/install-dockter-agent.sh")
 > ```
 >
