@@ -61,7 +61,18 @@ echo "请选择 Dockter Compose 根目录（用于存放项目目录）"
 read -p "按回车使用默认 [$DEFAULT_COMPOSE_ROOT]，或输入路径: " USER_COMPOSE_ROOT
 USER_COMPOSE_ROOT=${USER_COMPOSE_ROOT:-$DEFAULT_COMPOSE_ROOT}
 
-COMPOSE_ROOT=$(realpath -m "$USER_COMPOSE_ROOT")
+# 兼容性处理：尝试规范化路径（支持没有 realpath 的系统）
+if command -v realpath >/dev/null 2>&1; then
+  # 如果 realpath 存在，使用它（-m 允许路径不存在）
+  COMPOSE_ROOT=$(realpath -m "$USER_COMPOSE_ROOT" 2>/dev/null || echo "$USER_COMPOSE_ROOT")
+elif [ -d "$USER_COMPOSE_ROOT" ]; then
+  # 如果路径存在，使用 cd + pwd 获取绝对路径
+  COMPOSE_ROOT=$(cd "$USER_COMPOSE_ROOT" && pwd)
+else
+  # 如果路径不存在且没有 realpath，直接使用用户输入（后续 mkdir 会创建）
+  COMPOSE_ROOT="$USER_COMPOSE_ROOT"
+fi
+
 AGENT_DIR="$COMPOSE_ROOT/dockter-agent"
 YAML_FILE="$AGENT_DIR/docker-compose.yml"
 
