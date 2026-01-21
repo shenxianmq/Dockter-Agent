@@ -1293,8 +1293,31 @@ uninstall_service() {
     print_info "删除命令工具..."
     rm -f "$BIN_DIR/dt"
     
-    print_warning "安装目录 $INSTALL_DIR 未删除，如需完全卸载请手动删除:"
-    print_info "  sudo rm -rf $INSTALL_DIR"
+    # 询问是否删除安装目录
+    echo
+    print_warning "是否要删除安装目录 $INSTALL_DIR 及其所有内容？"
+    echo "这将删除："
+    echo "  - 二进制文件"
+    echo "  - 配置文件"
+    echo "  - 日志文件"
+    echo "  - 数据库文件"
+    echo "  - 其他所有数据"
+    read -p "确认删除安装目录？(y/N): " delete_dir
+    delete_dir=${delete_dir:-N}
+    
+    if [[ "$delete_dir" =~ ^[Yy]$ ]]; then
+        print_info "正在删除安装目录 $INSTALL_DIR..."
+        if [ -d "$INSTALL_DIR" ]; then
+            rm -rf "$INSTALL_DIR"
+            print_success "安装目录已删除"
+        else
+            print_warning "安装目录不存在，跳过删除"
+        fi
+    else
+        print_info "保留安装目录 $INSTALL_DIR"
+        print_info "如需手动删除，请执行: sudo rm -rf $INSTALL_DIR"
+    fi
+    
     print_success "卸载完成"
 }
 
