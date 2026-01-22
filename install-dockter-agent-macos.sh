@@ -1002,6 +1002,75 @@ show_access_info() {
     print_info "如果使用域名，请替换 IP 地址为您的域名"
 }
 
+# 显示日志
+show_logs() {
+    local lines="${2:-50}"
+    local follow="${3:-false}"
+    
+    # 尝试多个可能的日志路径
+    local log_files=(
+        "$INSTALL_DIR/logs/dockter.log"
+        "$CONFIG_DIR/logs/dockter.log"
+        "$INSTALL_DIR/logs/dockter-agent.out.log"
+        "$INSTALL_DIR/logs/dockter-agent.err.log"
+    )
+    
+    local log_file=""
+    for file in "${log_files[@]}"; do
+        if [ -f "$file" ]; then
+            log_file="$file"
+            break
+        fi
+    done
+    
+    # 如果找不到日志文件，尝试从 .env 读取 LOG_PATH
+    if [ -z "$log_file" ] && [ -f "$INSTALL_DIR/.env" ]; then
+        local env_log_path=$(grep "^LOG_PATH=" "$INSTALL_DIR/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'" || echo "")
+        if [ -n "$env_log_path" ] && [ -f "$env_log_path" ]; then
+            log_file="$env_log_path"
+        fi
+    fi
+    
+    # 如果还是找不到，尝试 launchd 日志
+    if [ -z "$log_file" ]; then
+        print_info "未找到日志文件，尝试使用 launchd 日志..."
+        echo
+        if sudo launchctl list | grep -q "$SERVICE_NAME" 2>/dev/null || pgrep -f "dockter-agent" >/dev/null 2>&1; then
+            if [ "$follow" = "true" ] || [ "$2" = "-f" ] || [ "$2" = "--follow" ]; then
+                print_info "实时查看 launchd 日志（按 Ctrl+C 退出）..."
+                log stream --predicate 'process == "dockter-agent"' --level=debug 2>/dev/null || \
+                sudo log show --predicate 'process == "dockter-agent"' --last 5m --style compact 2>/dev/null || \
+                print_warning "无法查看 launchd 日志，请检查日志文件"
+            else
+                sudo log show --predicate 'process == "dockter-agent"' --last 1h --style compact 2>/dev/null | tail -n "$lines" || \
+                print_warning "无法查看 launchd 日志，请检查日志文件"
+            fi
+            return 0
+        else
+            print_error "未找到日志文件，且服务未运行"
+            print_info "可能的日志文件位置："
+            for file in "${log_files[@]}"; do
+                echo "  - $file"
+            done
+            return 1
+        fi
+    fi
+    
+    print_info "日志文件: $log_file"
+    echo
+    
+    if [ "$follow" = "true" ] || [ "$2" = "-f" ] || [ "$2" = "--follow" ]; then
+        print_info "实时查看日志（按 Ctrl+C 退出）..."
+        tail -f "$log_file"
+    else
+        if [ "$lines" = "all" ] || [ "$lines" = "-a" ]; then
+            cat "$log_file"
+        else
+            tail -n "$lines" "$log_file"
+        fi
+    fi
+}
+
 # 显示交互式菜单
 show_menu() {
     while true; do
@@ -1015,11 +1084,12 @@ show_menu() {
         echo "3) 停止服务"
         echo "4) 重启服务"
         echo "5) 查看访问信息（地址/Token/端口）"
-        echo "6) 更新服务"
-        echo "7) 卸载服务"
+        echo "6) 查看日志"
+        echo "7) 更新服务"
+        echo "8) 卸载服务"
         echo "0) 退出"
         echo
-        read -p "请选择操作 [0-7]: " choice
+        read -p "请选择操作 [0-8]: " choice
         
         case "$choice" in
             1)
@@ -1054,11 +1124,42 @@ show_menu() {
                 ;;
             6)
                 echo
-                update_service
+                echo "查看日志选项："
+                echo "1) 查看最后 50 行（默认）"
+                echo "2) 查看最后 100 行"
+                echo "3) 查看最后 200 行"
+                echo "4) 查看全部日志"
+                echo "5) 实时跟踪日志（tail -f）"
+                read -p "请选择 [1-5 默认1]: " log_choice
+                log_choice=${log_choice:-1}
+                echo
+                case "$log_choice" in
+                    2)
+                        show_logs "" "100"
+                        ;;
+                    3)
+                        show_logs "" "200"
+                        ;;
+                    4)
+                        show_logs "" "all"
+                        ;;
+                    5)
+                        show_logs "" "-f"
+                        ;;
+                    *)
+                        show_logs "" "50"
+                        ;;
+                esac
                 echo
                 read -p "按 Enter 键继续..."
                 ;;
             7)
+                echo
+                update_service
+                echo
+                read -p "按 Enter 键继续..."
+                ;;
+            8)
                 echo
                 uninstall_service
                 echo
@@ -1094,6 +1195,10 @@ Dockter Agent 管理工具（macOS 版本）
   port            显示 API 端口
   token           显示 API Token
   address         显示访问地址
+  logs [N|-f]     查看日志（默认最后 50 行）
+                  logs 100      # 查看最后 100 行
+                  logs -f       # 实时跟踪日志
+                  logs all      # 查看全部日志
   update [URL]    更新服务（自动从 GitHub latest 下载，可选：指定下载 URL）
   uninstall       卸载服务
   menu            显示交互式菜单
@@ -1104,6 +1209,9 @@ Dockter Agent 管理工具（macOS 版本）
   dt status        # 查看服务状态
   dt start         # 启动服务
   dt info          # 查看访问信息（地址/Token/端口）
+  dt logs          # 查看日志（最后 50 行）
+  dt logs 100      # 查看最后 100 行日志
+  dt logs -f       # 实时跟踪日志
   dt update        # 更新服务
   dt update URL    # 从指定 URL 更新服务
 EOF
@@ -1142,6 +1250,13 @@ case "$1" in
         fi
         SERVER_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | head -n1 || echo "localhost")
         echo "http://$SERVER_IP:$PORT"
+        ;;
+    logs|log)
+        if [ "$2" = "-f" ] || [ "$2" = "--follow" ]; then
+            show_logs "" "-f"
+        else
+            show_logs "" "${2:-50}"
+        fi
         ;;
     update)
         update_service "$2"
