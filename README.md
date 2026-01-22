@@ -58,6 +58,46 @@ export GITHUB_BASE_URL="https://cdn.jsdelivr.net/gh/shenxianmq/Dockter-Agent@mai
 curl -fsSL "$GITHUB_BASE_URL/install-dockter-agent.sh" -o /tmp/install-dockter-agent.sh && bash /tmp/install-dockter-agent.sh
 ```
 
+# 🐳 Docker Compose 部署
+
+如果您想手动使用 Docker Compose 部署，可以按照以下步骤：
+
+1. **下载或创建 `docker-compose.yml` 文件**
+
+   项目根目录已包含 `docker-compose.yml` 文件，您可以直接使用或根据需要进行修改。
+
+2. **修改配置**
+
+   编辑 `docker-compose.yml` 文件，修改以下关键配置：
+   - `DOCKTER_API_TOKEN`: 设置您的 API Token（建议使用强随机字符串）
+   - `DOCKTER_CONTAINER_BASE_URL`: 设置服务器 IP 地址（如：`http://192.168.1.100`）
+   - `DOCKTER_API_PORT`: API 端口（默认 19029）
+   - `HOST_STACK_DIR` 和挂载路径：Compose 项目根目录（默认 `/mnt/compose`）
+
+3. **启动服务**
+
+   ```bash
+   # 使用 docker compose（推荐）
+   docker compose up -d
+   
+   # 或使用 docker-compose
+   docker-compose up -d
+   ```
+
+4. **查看日志**
+
+   ```bash
+   docker compose logs -f dockter-agent
+   ```
+
+5. **停止服务**
+
+   ```bash
+   docker compose down
+   ```
+
+> 💡 **提示**：使用 Docker Compose 部署时，请确保已放行相应的端口（默认 19029）。
+
 # 🔐 安装完成后信息
 
 安装完成后，脚本会显示以下信息：
