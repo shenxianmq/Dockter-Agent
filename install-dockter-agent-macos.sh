@@ -254,8 +254,8 @@ detect_ip() {
 }
 
 # 安装目录配置
-INSTALL_DIR="/usr/local/opt/dockter-agent"
-BIN_DIR="/usr/local/bin"
+INSTALL_DIR="$HOME/Library/Application Support/dockter-agent"
+BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$INSTALL_DIR/config"
 LOG_DIR="$INSTALL_DIR/logs"
 PLIST_FILE="$HOME/Library/LaunchAgents/com.dockter.agent.plist"
@@ -373,6 +373,7 @@ create_directories() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$LOG_DIR"
     mkdir -p "$COMPOSE_ROOT"
+    mkdir -p "$BIN_DIR"
     print_success "目录创建完成"
 }
 
@@ -592,7 +593,7 @@ create_update_script() {
 
 set -e
 
-INSTALL_DIR="/usr/local/opt/dockter-agent"
+INSTALL_DIR="$HOME/Library/Application Support/dockter-agent"
 SERVICE_NAME="com.dockter.agent"
 LOG_FILE="$INSTALL_DIR/logs/update.log"
 LOCK_FILE="/tmp/dockter-agent-update.lock"
@@ -753,7 +754,7 @@ create_dt_command() {
 #!/usr/bin/env bash
 # Dockter Agent 管理工具（macOS 版本）
 
-INSTALL_DIR="/usr/local/opt/dockter-agent"
+INSTALL_DIR="$HOME/Library/Application Support/dockter-agent"
 SERVICE_NAME="com.dockter.agent"
 PLIST_FILE="$HOME/Library/LaunchAgents/com.dockter.agent.plist"
 CONFIG_FILE="$INSTALL_DIR/config/config.json"
@@ -1289,6 +1290,14 @@ DTEOF
     
     chmod +x "$BIN_DIR/dt"
     print_success "dt 命令工具创建完成"
+    
+    # 检查 PATH 中是否包含 BIN_DIR
+    if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+        print_warning "注意：$BIN_DIR 未在 PATH 中"
+        print_info "请将以下内容添加到 ~/.zshrc 或 ~/.bash_profile："
+        echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        print_info "或者使用完整路径运行命令: $BIN_DIR/dt"
+    fi
 }
 
 # 启动服务
@@ -1339,8 +1348,8 @@ firewall_notice() {
     echo "👉 或使用以下命令放行端口 $DOCKTER_API_PORT/TCP"
     echo
     echo "例如："
-    echo "  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/local/opt/dockter-agent/dockter-agent"
-    echo "  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/local/opt/dockter-agent/dockter-agent"
+    echo "  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add \"$INSTALL_DIR/dockter-agent\""
+    echo "  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp \"$INSTALL_DIR/dockter-agent\""
     echo
 }
 
@@ -1394,8 +1403,6 @@ main() {
     detect_arch
     
     # 创建安装目录（下载二进制文件需要）
-    INSTALL_DIR="/usr/local/opt/dockter-agent"
-    CONFIG_DIR="$INSTALL_DIR/config"
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
     
