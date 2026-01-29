@@ -269,7 +269,7 @@ check_version() {
 
 # 检测本机真实 IPv4
 detect_ip() {
-    AUTO_IP=$(curl -s $USE_PROXY --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || echo "")
+    AUTO_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || echo "")
     
     if [ -z "$AUTO_IP" ]; then
         AUTO_IP=$(hostname -I | awk '{print $1}')

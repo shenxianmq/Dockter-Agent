@@ -46,7 +46,7 @@ fi
 #####################################
 
 
-AUTO_IP=$(curl -s $USE_PROXY https://ipinfo.io/ip && echo)
+AUTO_IP=$(curl -s https://ipinfo.io/ip && echo)
 
 echo
 echo "检测到本机 IPv4 地址：$AUTO_IP"
