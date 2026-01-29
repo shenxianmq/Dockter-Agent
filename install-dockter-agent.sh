@@ -51,6 +51,44 @@ else
     GITHUB_BASE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
 fi
 
+# HTTP 代理设置
+setup_proxy() {
+    # 优先检查环境变量 DOCKTER_PROXY
+    if [ -n "$DOCKTER_PROXY" ]; then
+        export HTTP_PROXY="$DOCKTER_PROXY"
+        export HTTPS_PROXY="$DOCKTER_PROXY"
+        export http_proxy="$DOCKTER_PROXY"
+        export https_proxy="$DOCKTER_PROXY"
+        CURL_PROXY="--proxy $DOCKTER_PROXY"
+        print_info "✅ 从环境变量 DOCKTER_PROXY 读取代理: $DOCKTER_PROXY"
+        return 0
+    fi
+    # 检查是否在交互式终端中
+    if [ ! -t 0 ]; then
+        CURL_PROXY=""
+        return 0
+    fi
+    echo
+    echo "是否需要使用 HTTP 代理？"
+    echo "1) 不使用代理（默认）"
+    echo "2) 使用代理"
+    read -p "请选择 (1/2 默认1): " proxy_choice
+    proxy_choice=${proxy_choice:-1}
+    CURL_PROXY=""
+    if [[ "$proxy_choice" == "2" ]]; then
+        read -p "请输入代理地址（例如: http://127.0.0.1:7890）: " PROXY_URL
+        if [[ -n "$PROXY_URL" ]]; then
+            export HTTP_PROXY="$PROXY_URL"
+            export HTTPS_PROXY="$PROXY_URL"
+            export http_proxy="$PROXY_URL"
+            export https_proxy="$PROXY_URL"
+            export DOCKTER_PROXY="$PROXY_URL"
+            CURL_PROXY="--proxy $PROXY_URL"
+            print_success "✅ 已设置代理: $PROXY_URL"
+        fi
+    fi
+}
+
 # 检测系统类型
 detect_system() {
     print_info "正在检测系统类型..."
@@ -139,7 +177,7 @@ download_and_execute_script() {
     print_info "URL: ${script_url}"
     
     if command -v curl >/dev/null 2>&1; then
-        if ! curl -s --max-time 10 --connect-timeout 5 -f "${script_url}" -o "${temp_script}"; then
+        if ! curl -s $CURL_PROXY --max-time 10 --connect-timeout 5 -f "${script_url}" -o "${temp_script}"; then
             print_error "下载失败，请检查网络连接"
             exit 1
         fi
@@ -211,6 +249,9 @@ main() {
         echo "使用: sudo $0"
         exit 1
     fi
+    
+    # 设置代理（如果需要）
+    setup_proxy
     
     # 检测系统类型
     detect_system

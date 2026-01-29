@@ -55,6 +55,39 @@ else
     GITHUB_RELEASES_BASE="${GITHUB_BASE_URL}/releases/latest"
 fi
 
+# HTTP 代理设置
+setup_proxy() {
+    # 优先检查环境变量 DOCKTER_PROXY
+    if [ -n "$DOCKTER_PROXY" ]; then
+        export HTTP_PROXY="$DOCKTER_PROXY"
+        export HTTPS_PROXY="$DOCKTER_PROXY"
+        export http_proxy="$DOCKTER_PROXY"
+        export https_proxy="$DOCKTER_PROXY"
+        USE_PROXY="--proxy $DOCKTER_PROXY"
+        print_info "✅ 从环境变量 DOCKTER_PROXY 读取代理: $DOCKTER_PROXY"
+        return 0
+    fi
+    echo
+    echo "是否需要使用 HTTP 代理？"
+    echo "1) 不使用代理（默认）"
+    echo "2) 使用代理"
+    read -p "请选择 (1/2 默认1): " proxy_choice
+    proxy_choice=${proxy_choice:-1}
+    USE_PROXY=""
+    if [[ "$proxy_choice" == "2" ]]; then
+        read -p "请输入代理地址（例如: http://127.0.0.1:7890）: " PROXY_URL
+        if [[ -n "$PROXY_URL" ]]; then
+            export HTTP_PROXY="$PROXY_URL"
+            export HTTPS_PROXY="$PROXY_URL"
+            export http_proxy="$PROXY_URL"
+            export https_proxy="$PROXY_URL"
+            export DOCKTER_PROXY="$PROXY_URL"
+            USE_PROXY="--proxy $PROXY_URL"
+            print_success "✅ 已设置代理: $PROXY_URL"
+        fi
+    fi
+}
+
 # 检查是否为 root 用户
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -129,7 +162,7 @@ get_latest_version() {
     local version_url="${GITHUB_RELEASES_BASE}/version.txt"
     
     if command -v curl >/dev/null 2>&1; then
-        local version_info=$(curl -s --max-time 5 --connect-timeout 3 "$version_url" 2>/dev/null || echo "")
+        local version_info=$(curl -s $USE_PROXY --max-time 5 --connect-timeout 3 "$version_url" 2>/dev/null || echo "")
         if [ -n "$version_info" ]; then
             local version=$(echo "$version_info" | grep -i "^Version:" | sed 's/Version:[[:space:]]*//' | tr -d '\r\n' || echo "")
             if [ -n "$version" ]; then
@@ -237,7 +270,7 @@ check_version() {
 
 # 检测本机真实 IPv4
 detect_ip() {
-    AUTO_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || echo "")
+    AUTO_IP=$(curl -s $USE_PROXY --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || echo "")
     
     if [ -z "$AUTO_IP" ]; then
         AUTO_IP=$(hostname -I | awk '{print $1}')
@@ -430,7 +463,7 @@ download_binary() {
                 exit 1
             }
         elif command -v curl >/dev/null 2>&1; then
-            curl -L --progress-bar "$BINARY_URL" -o "$INSTALL_DIR/dockter-agent" || {
+            curl -L $USE_PROXY --progress-bar "$BINARY_URL" -o "$INSTALL_DIR/dockter-agent" || {
                 print_error "从指定 URL 下载失败"
                 exit 1
             }
@@ -472,11 +505,11 @@ download_binary() {
         fi
     elif command -v curl >/dev/null 2>&1; then
         print_info "使用 curl 下载..."
-        if curl -L --progress-bar "$github_url" -o "$INSTALL_DIR/dockter-agent"; then
+        if curl -L $USE_PROXY --progress-bar "$github_url" -o "$INSTALL_DIR/dockter-agent"; then
             chmod +x "$INSTALL_DIR/dockter-agent"
             # 同时下载 version.txt
             local version_url="${GITHUB_RELEASES_BASE}/version.txt"
-            curl -s --max-time 5 --connect-timeout 3 "$version_url" -o "$INSTALL_DIR/version.txt" 2>/dev/null || print_warning "无法下载 version.txt，但不影响安装"
+            curl -s $USE_PROXY --max-time 5 --connect-timeout 3 "$version_url" -o "$INSTALL_DIR/version.txt" 2>/dev/null || print_warning "无法下载 version.txt，但不影响安装"
             print_success "二进制文件下载完成"
             return 0
         else
@@ -499,7 +532,8 @@ create_config() {
 {
   "global_settings": {
     "api_token": "$DOCKTER_API_TOKEN",
-    "debug_mode": $DOCKTER_DEBUG
+    "debug_mode": $DOCKTER_DEBUG,
+    "http_proxy": "${DOCKTER_PROXY:-}"
   },
   "docker_settings": {
     "docker_stack_directory": "$COMPOSE_ROOT",
@@ -840,7 +874,7 @@ if command -v wget >/dev/null 2>&1; then
         exit 1
     fi
 elif command -v curl >/dev/null 2>&1; then
-    if curl -L --progress-bar "$DOWNLOAD_URL" -o "$TEMP_FILE"; then
+    if curl -L $USE_PROXY --progress-bar "$DOWNLOAD_URL" -o "$TEMP_FILE"; then
         chmod +x "$TEMP_FILE"
         log_info "下载完成 (使用 curl)"
     else
@@ -868,7 +902,7 @@ VERSION_URL="${GITHUB_RELEASES_BASE}/version.txt"
 if command -v wget >/dev/null 2>&1; then
     wget -q "$VERSION_URL" -O "$INSTALL_DIR/version.txt" 2>/dev/null || log_warning "无法下载 version.txt"
 elif command -v curl >/dev/null 2>&1; then
-    curl -s --max-time 5 --connect-timeout 3 "$VERSION_URL" -o "$INSTALL_DIR/version.txt" 2>/dev/null || log_warning "无法下载 version.txt"
+    curl -s $USE_PROXY --max-time 5 --connect-timeout 3 "$VERSION_URL" -o "$INSTALL_DIR/version.txt" 2>/dev/null || log_warning "无法下载 version.txt"
 fi
 
 # 启动服务
@@ -1137,7 +1171,7 @@ show_access_info() {
     fi
     
     # 尝试获取服务器 IP
-    SERVER_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
+    SERVER_IP=$(curl -s $USE_PROXY --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
     
     # 显示访问地址
     print_info "Agent 访问地址:"
@@ -1400,7 +1434,7 @@ case "$1" in
         if [ -z "$PORT" ]; then
             PORT="19029"  # 默认端口
         fi
-        SERVER_IP=$(curl -s --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
+        SERVER_IP=$(curl -s $USE_PROXY --max-time 5 --connect-timeout 3 https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}' || echo "localhost")
         echo "http://$SERVER_IP:$PORT"
         ;;
     logs|log)
@@ -1553,6 +1587,7 @@ show_install_info() {
 main() {
     print_title
     check_root
+    setup_proxy
     detect_unraid
     
     # 首先检测架构（下载二进制文件需要）

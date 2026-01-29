@@ -7,11 +7,46 @@ echo "====================================="
 
 
 #####################################
+# HTTP 代理设置
+#####################################
+# 优先检查环境变量 DOCKTER_PROXY
+if [ -n "$DOCKTER_PROXY" ]; then
+  export HTTP_PROXY="$DOCKTER_PROXY"
+  export HTTPS_PROXY="$DOCKTER_PROXY"
+  export http_proxy="$DOCKTER_PROXY"
+  export https_proxy="$DOCKTER_PROXY"
+  USE_PROXY="--proxy $DOCKTER_PROXY"
+  echo "✅ 从环境变量 DOCKTER_PROXY 读取代理: $DOCKTER_PROXY"
+else
+  echo
+  echo "是否需要使用 HTTP 代理？"
+  echo "1) 不使用代理（默认）"
+  echo "2) 使用代理"
+  read -p "请选择 (1/2 默认1): " proxy_choice
+  proxy_choice=${proxy_choice:-1}
+
+  USE_PROXY=""
+  if [[ "$proxy_choice" == "2" ]]; then
+    read -p "请输入代理地址（例如: http://127.0.0.1:7890）: " PROXY_URL
+    if [[ -n "$PROXY_URL" ]]; then
+      export HTTP_PROXY="$PROXY_URL"
+      export HTTPS_PROXY="$PROXY_URL"
+      export http_proxy="$PROXY_URL"
+      export https_proxy="$PROXY_URL"
+      export DOCKTER_PROXY="$PROXY_URL"
+      USE_PROXY="--proxy $PROXY_URL"
+      echo "✅ 已设置代理: $PROXY_URL"
+    fi
+  fi
+fi
+
+
+#####################################
 # 检测本机真实 IPv4
 #####################################
 
 
-AUTO_IP=$(curl -s https://ipinfo.io/ip && echo)
+AUTO_IP=$(curl -s $USE_PROXY https://ipinfo.io/ip && echo)
 
 echo
 echo "检测到本机 IPv4 地址：$AUTO_IP"
