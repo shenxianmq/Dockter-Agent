@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  dockter-agent:
+    image: shenxianmq/dockter-agent:latest
+    container_name: dockter-agent
+    restart: unless-stopped
+
+    environment:
+      # Agent 模式
+      - DOCKTER_MODE=agent
+      
+      # Compose 项目根目录（宿主机路径）
+      - HOST_STACK_DIR=/mnt/compose
+      
+      # Compose 项目根目录（容器内路径）
+      - DOCKTER_STACK_DIR=/opt/docker-compose
+      
+      # API Token（请修改为您的安全 Token）
+      - DOCKTER_API_TOKEN=your-api-token-here
+      
+      # 是否在启动时自动拉取镜像（true/false）
+      - DOCKTER_COMPOSE_PULL_IMAGES=false
+      
+      # 容器访问的基础 URL（不要带端口）
+      - DOCKTER_CONTAINER_BASE_URL=http://your-server-ip
+      
+      # 自身容器名称
+      - DOCKTER_SELF_CONTAINER=dockter-agent
+      
+      # API 端口（默认 19029）
+      - DOCKTER_API_PORT=19029
+      
+      # 时区设置
+      - TZ=Asia/Shanghai
+      
+      # 日志级别（debug/info/warn/error）
+      - LOG_LEVEL=debug
+
+    volumes:
+      # Docker socket（只读）
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      
+      # Compose 项目根目录挂载
+      - /mnt/compose:/opt/docker-compose
+      
+      # 配置文件目录（可选）
+      - ./config:/app/config
+      
+      # 系统信息（只读）
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+
+    # 使用 host 网络模式（便于直接访问宿主机端口）
+    network_mode: host
